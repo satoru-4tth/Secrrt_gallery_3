@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:math_expressions/math_expressions.dart';
+import 'secret_gallery_page.dart';
+import 'package:characters/characters.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,46 +10,27 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Calculator Disguise App',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF121212),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Calculator'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -54,69 +38,229 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  String input = '';
 
-  void _incrementCounter() {
+  // 表示用：空のときは 0 を見せる
+  String get _display => input.isEmpty ? '0' : input;
+
+  void _onButtonPressed(String value) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      switch (value) {
+        case 'AC':
+          input = '';
+          break;
+        case '⌫':
+          if (input.isNotEmpty) input = input.substring(0, input.length - 1);
+          break;
+        case '=':
+          if (input == '1234') {
+            final nav = Navigator.of(context);
+            input = ''; // 画面遷移前に消しておく
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              nav.push(
+                MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
+              );
+            });
+            break;
+          }
+          try {
+            final result = _calculate(input);
+            input = (result.isFinite)
+                ? (result % 1 == 0
+                ? result.toInt().toString()
+                : _trimTrailingZeros(result.toStringAsFixed(10)))
+                : 'Error';
+          } catch (_) {
+            input = 'Error';
+          }
+          break;
+        default:
+        // 連続演算子の軽いガード（例: ++, ** などの連続入力を1つに圧縮）
+          if (_isOperator(value) &&
+              input.isNotEmpty &&
+              _isOperator(input.characters.last)) {
+            input = input.substring(0, input.length - 1) + value;
+          } else {
+            input += value;
+          }
+      }
     });
+  }
+
+  bool _isOperator(String s) => const ['+', '-', '×', '÷'].contains(s);
+
+  String _trimTrailingZeros(String s) {
+    // "1.2300000000" -> "1.23", "2.0000000000" -> "2"
+    if (!s.contains('.')) return s;
+    s = s.replaceFirst(RegExp(r'0+$'), '');
+    if (s.endsWith('.')) s = s.substring(0, s.length - 1);
+    return s;
+  }
+
+  double _calculate(String expression) {
+    final expStr = expression
+        .replaceAll('×', '*')
+        .replaceAll('÷', '/');
+    final parser = Parser();
+    final exp = parser.parse(expStr);
+    final cm = ContextModel();
+    final v = exp.evaluate(EvaluationType.REAL, cm);
+    return (v is num) ? v.toDouble() : double.nan;
+  }
+
+  // 見た目をタイプごとに分ける
+  Widget _calcButton(
+      String text, {
+        ButtonType type = ButtonType.normal,
+        int flex = 1,
+        VoidCallback? onLongPress,
+      }) {
+    final bool isOperator =
+        type == ButtonType.operator || type == ButtonType.equals;
+
+    final Color base = switch (type) {
+      ButtonType.normal => const Color(0xFF2A2A2A),
+      ButtonType.helper => const Color(0xFF3A3A3A),
+      ButtonType.operator => const Color(0xFFFB8C00), // オレンジ
+      ButtonType.equals => const Color(0xFF2962FF),   // ブルー強調
+    };
+
+    final TextStyle labelStyle = TextStyle(
+      fontSize: 24,
+      fontWeight: isOperator ? FontWeight.w700 : FontWeight.w600,
+      color: type == ButtonType.operator || type == ButtonType.equals
+          ? Colors.white
+          : Colors.white,
+    );
+
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: SizedBox(
+          height: 64,
+          child: ElevatedButton(
+            onPressed: () => _onButtonPressed(text),
+            onLongPress: onLongPress,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: base,
+              foregroundColor: Colors.white,
+              shadowColor: Colors.black.withOpacity(0.4),
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+            ),
+            child: Text(text, style: labelStyle),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    // 1段目: AC / ⌫ / ( / )
+    // 2段目: 7 8 9 ÷
+    // 3段目: 4 5 6 ×
+    // 4段目: 1 2 3 -
+    // 5段目: 0(横長) . =
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+      body: SafeArea(
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+          children: [
+            // 表示部
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                alignment: Alignment.bottomRight,
+                child: FittedBox(
+                  alignment: Alignment.bottomRight,
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _display,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 56,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // キーパッド
+            Column(
+              children: [
+                Row(
+                  children: [
+                    _calcButton('AC',
+                        type: ButtonType.helper,
+                        onLongPress: () {
+                          // 長押しで更に全消去（今は同じ動作にしているが、将来履歴も消す等に拡張可）
+                          setState(() => input = '');
+                        }),
+                    _calcButton('⌫', type: ButtonType.helper),
+                    _calcButton('(', type: ButtonType.helper),
+                    _calcButton(')', type: ButtonType.helper),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _calcButton('7'),
+                    _calcButton('8'),
+                    _calcButton('9'),
+                    _calcButton('÷', type: ButtonType.operator),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _calcButton('4'),
+                    _calcButton('5'),
+                    _calcButton('6'),
+                    _calcButton('×', type: ButtonType.operator),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _calcButton('1'),
+                    _calcButton('2'),
+                    _calcButton('3'),
+                    _calcButton('-', type: ButtonType.operator),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _calcButton('0', flex: 2),
+                    _calcButton('.'),
+                    _calcButton('=', type: ButtonType.equals),
+                    // 右端を + にするなら ↓ のように調整
+                    // _calcButton('+', type: ButtonType.operator),
+                  ],
+                ),
+                // 最終行に + を置きたい場合は、上の行を
+                // [0(2), ., +] として、その上の行の右端を '=' にする等で調整可
+                Row(
+                  children: [
+                    _calcButton('+', type: ButtonType.operator, flex: 4),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
+
+enum ButtonType { normal, helper, operator, equals }
