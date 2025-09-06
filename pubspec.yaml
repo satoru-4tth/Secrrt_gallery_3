@@ -33,7 +33,7 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: false  # ← iOSは無効
-  image_path: "assets/hebi.jpg"  # 使いたいアイコン画像のパス
+  image_path: "assets/icon.png"  # 使いたいアイコン画像のパス
 
 flutter:
 
