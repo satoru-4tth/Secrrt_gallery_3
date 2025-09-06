@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'controllers/calculator_controller.dart';
 import 'ui/widgets/calc_button.dart';
 import 'pages/secret_gallery_page.dart';
+import 'pages/change_password_page.dart';
+import 'services/password_service.dart'; // ★ 追加
 
 void main() {
   runApp(const MyApp());
@@ -39,31 +41,69 @@ class CalculatorPage extends StatefulWidget {
 class _CalculatorPageState extends State<CalculatorPage> {
   final controller = CalculatorController();
 
-  void _handleKey(String value) {
-    setState(() {
-      switch (value) {
-        case 'AC':
-          controller.clear();
-          break;
-        case '⌫':
-          controller.backspace();
-          break;
-        case '=':
-        // 秘密パスワード
-          if (controller.input == '1234') {
-            final nav = Navigator.of(context);
-            controller.clear();
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              nav.push(MaterialPageRoute(builder: (_) => const SecretGalleryPage()));
-            });
-          } else {
-            controller.evaluate();
-          }
-          break;
-        default:
-          controller.add(value);
-      }
-    });
+  // ★ async 化。setState の中で await はしない
+  Future<void> _handleKey(String value) async {
+    switch (value) {
+      case 'AC':
+        setState(controller.clear);
+        break;
+
+      case '⌫':
+        setState(controller.backspace);
+        break;
+
+      case '=':
+        final svc = PasswordService();
+        final has = await svc.hasPassword();
+
+        final input = controller.input;
+        // 未設定なら '1234' を暫定で許可
+        final ok = has ? await svc.verify(input) : (input == '1234');
+
+        if (ok) {
+          setState(controller.clear); // 表示を消してから遷移予約
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
+            );
+            if (!has && context.mounted) {
+              _promptSetPassword(context); // ★ 定義を下に追加
+            }
+          });
+        } else {
+          setState(controller.evaluate); // 通常の計算として評価
+        }
+        break;
+
+      default:
+        setState(() => controller.add(value));
+    }
+  }
+
+  // ★ 追加：未設定時にパスワード設定を促すダイアログ
+  void _promptSetPassword(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('パスワード未設定'),
+        content: const Text('次回からの解錠に使うパスワードを設定してください。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('後で'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
+              );
+            },
+            child: const Text('設定する'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -104,50 +144,51 @@ class _CalculatorPageState extends State<CalculatorPage> {
               children: [
                 Row(
                   children: [
-                    CalcButton('AC',
+                    CalcButton(
+                      'AC',
                       type: ButtonType.helper,
-                      onPressed: () => _handleKey('AC'),
+                      onPressed: () { _handleKey('AC'); }, // ★ () {} で包む
                       onLongPress: () => setState(controller.clear),
                     ),
-                    CalcButton('⌫', type: ButtonType.helper, onPressed: () => _handleKey('⌫')),
-                    CalcButton('(', type: ButtonType.helper, onPressed: () => _handleKey('(')),
-                    CalcButton(')', type: ButtonType.helper, onPressed: () => _handleKey(')')),
+                    CalcButton('⌫', type: ButtonType.helper, onPressed: () { _handleKey('⌫'); }),
+                    CalcButton('(', type: ButtonType.helper, onPressed: () { _handleKey('('); }),
+                    CalcButton(')', type: ButtonType.helper, onPressed: () { _handleKey(')'); }),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('7', onPressed: () => _handleKey('7')),
-                    CalcButton('8', onPressed: () => _handleKey('8')),
-                    CalcButton('9', onPressed: () => _handleKey('9')),
-                    CalcButton('÷', type: ButtonType.operator, onPressed: () => _handleKey('÷')),
+                    CalcButton('7', onPressed: () { _handleKey('7'); }),
+                    CalcButton('8', onPressed: () { _handleKey('8'); }),
+                    CalcButton('9', onPressed: () { _handleKey('9'); }),
+                    CalcButton('÷', type: ButtonType.operator, onPressed: () { _handleKey('÷'); }),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('4', onPressed: () => _handleKey('4')),
-                    CalcButton('5', onPressed: () => _handleKey('5')),
-                    CalcButton('6', onPressed: () => _handleKey('6')),
-                    CalcButton('×', type: ButtonType.operator, onPressed: () => _handleKey('×')),
+                    CalcButton('4', onPressed: () { _handleKey('4'); }),
+                    CalcButton('5', onPressed: () { _handleKey('5'); }),
+                    CalcButton('6', onPressed: () { _handleKey('6'); }),
+                    CalcButton('×', type: ButtonType.operator, onPressed: () { _handleKey('×'); }),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('1', onPressed: () => _handleKey('1')),
-                    CalcButton('2', onPressed: () => _handleKey('2')),
-                    CalcButton('3', onPressed: () => _handleKey('3')),
-                    CalcButton('-', type: ButtonType.operator, onPressed: () => _handleKey('-')),
+                    CalcButton('1', onPressed: () { _handleKey('1'); }),
+                    CalcButton('2', onPressed: () { _handleKey('2'); }),
+                    CalcButton('3', onPressed: () { _handleKey('3'); }),
+                    CalcButton('-', type: ButtonType.operator, onPressed: () { _handleKey('-'); }),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('0', flex: 2, onPressed: () => _handleKey('0')),
-                    CalcButton('.', onPressed: () => _handleKey('.')),
-                    CalcButton('=', type: ButtonType.equals, onPressed: () => _handleKey('=')),
+                    CalcButton('0', flex: 2, onPressed: () { _handleKey('0'); }),
+                    CalcButton('.', onPressed: () { _handleKey('.'); }),
+                    CalcButton('=', type: ButtonType.equals, onPressed: () { _handleKey('='); }),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('+', type: ButtonType.operator, flex: 4, onPressed: () => _handleKey('+')),
+                    CalcButton('+', type: ButtonType.operator, flex: 4, onPressed: () { _handleKey('+'); }),
                   ],
                 ),
               ],

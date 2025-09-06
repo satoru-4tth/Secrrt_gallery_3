@@ -4,6 +4,7 @@ import '../services/vault_service.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
+import '../pages/change_password_page.dart';
 
 class SecretGalleryPage extends StatefulWidget {
   const SecretGalleryPage({super.key});
@@ -50,6 +51,15 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
                 onPressed: () => ctrl.createFolder(context),
                 icon: const Icon(Icons.create_new_folder_outlined),
                 tooltip: 'フォルダ作成',
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
+                  );
+                },
+                icon: const Icon(Icons.lock_outline),
+                tooltip: 'パスワード変更',
               ),
             ],
             bottom: BreadcrumbBar(
