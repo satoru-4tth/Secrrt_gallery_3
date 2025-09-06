@@ -1,5 +1,15 @@
 # secret_gallery_3
 
+アイコン設定
+
+キャッシュ削除
+
+パスワード変更
+
+フォルダー分ける機能
+
+パスワード忘れた時の変更機能。<br>外部認証で本人確認
+
 A new Flutter project.
 
 ## Getting Started
