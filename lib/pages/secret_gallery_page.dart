@@ -34,7 +34,7 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
     return AnimatedBuilder(
       animation: ctrl,
       builder: (_, __) {
-        final crumbs = ctrl.breadcrumb();
+        final crumbs = ctrl.breadcrumbDirs();
         final isLoading = ctrl.current == null;
         final empty = ctrl.dirs.isEmpty && ctrl.files.isEmpty;
 

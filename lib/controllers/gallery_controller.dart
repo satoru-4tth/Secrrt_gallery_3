@@ -81,19 +81,17 @@ class GalleryController extends ChangeNotifier {
     await refresh();
   }
 
-  List<Directory> breadcrumb() {
-    final cur = _current;
-    if (cur == null) return [];
-    final parts = <Directory>[];
-    Directory it = cur;
+  /// root → current の順に Directory を並べて返す
+  List<Directory> breadcrumbDirs() {
+    if (_root == null || _current == null) return const [];
+    final chain = <Directory>[];
+    var cur = _current!;
     while (true) {
-      parts.insert(0, it);
-      final parent = it.parent;
-      if (parent.path == it.path) break;
-      it = parent;
-      if (it.path.endsWith('/Documents') || it.path.endsWith('Documents')) break;
+      chain.add(cur);
+      if (_root!.path == cur.path) break;
+      cur = cur.parent;
     }
-    return parts;
+    return chain.reversed.toList(); // root → ... → current
   }
 
   // ---------- 小さなUIヘルパ（ダイアログ/トースト） ----------
