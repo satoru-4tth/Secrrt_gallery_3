@@ -6,6 +6,7 @@ import 'pages/change_password_page.dart';
 import 'services/password_service.dart'; // ★ 追加
 
 //アプリケーションのエントリーポイント
+//constコンパイル時に値が固定される不変オブジェクト(イミュータブル)
 void main() {
   runApp(const MyApp());
 }
