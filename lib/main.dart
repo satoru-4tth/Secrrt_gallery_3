@@ -5,6 +5,7 @@ import 'pages/secret_gallery_page.dart';
 import 'pages/change_password_page.dart';
 import 'services/password_service.dart'; // ★ 追加
 
+//アプリケーションのエントリーポイント
 void main() {
   runApp(const MyApp());
 }
