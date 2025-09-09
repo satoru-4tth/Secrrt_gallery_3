@@ -4,7 +4,8 @@ import '../services/vault_service.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
-import '../pages/change_password_page.dart';
+// import '../pages/change_password_page.dart'; // ← このファイルでは未使用なら消してOK
+import '../widgets/settings_menu_button.dart';
 
 class SecretGalleryPage extends StatefulWidget {
   const SecretGalleryPage({super.key});
@@ -52,15 +53,7 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
                 icon: const Icon(Icons.create_new_folder_outlined),
                 tooltip: 'フォルダ作成',
               ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
-                  );
-                },
-                icon: const Icon(Icons.lock_outline),
-                tooltip: 'パスワード変更',
-              ),
+              const SettingsMenuButton(), // ← 新しい設定メニュー（パスワード変更/キャッシュクリア）
             ],
             bottom: BreadcrumbBar(
               crumbs: crumbs,
