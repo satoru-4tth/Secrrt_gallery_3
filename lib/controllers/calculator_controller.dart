@@ -1,3 +1,6 @@
+//計算処理を管理するコントローラー
+//画面に出すUIとは分離して数式処理だけ担うクラスです。
+
 import 'package:characters/characters.dart';
 import 'package:math_expressions/math_expressions.dart';
 
