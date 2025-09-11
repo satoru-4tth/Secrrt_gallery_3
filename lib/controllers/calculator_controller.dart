@@ -1,5 +1,6 @@
 //計算処理を管理するコントローラー
 //画面に出すUIとは分離して数式処理だけ担うクラスです。
+//入力を受け取って、受け取った値を処理して画面の処理にデータを渡す役割をしているコントローラー
 
 import 'package:characters/characters.dart';
 import 'package:math_expressions/math_expressions.dart';
