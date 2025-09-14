@@ -18,6 +18,8 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final atRoot = crumbs.length <= 1; // ルート判定
+
     return PreferredSize(
       preferredSize: preferredSize,
       child: SingleChildScrollView(
@@ -25,19 +27,30 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           children: [
+            // ルートの時は「上へ」を出さない
+            if (!atRoot)
             FilledButton.tonal(
               onPressed: onUp,
               child: const Row(children: [Icon(Icons.arrow_upward, size: 16), SizedBox(width: 4), Text('上へ')]),
             ),
-            const SizedBox(width: 8),
+
+
+            if (!atRoot) const SizedBox(width: 8),
+            //パンくず
             ...List.generate(crumbs.length, (i) {
               final d = crumbs[i];
               final isLast = i == crumbs.length - 1;
-              final label = d.path.split(Platform.pathSeparator).last.isEmpty ? 'root'
-                  : d.path.split(Platform.pathSeparator).last;
+              final isRoot = i == 0; //ルート判定
+
+              final parts = d.path.split(Platform.pathSeparator);
+              final tail = parts.isNotEmpty ? parts.last : '';
+
+              final label = isRoot ? 'ホーム' : (tail.isEmpty ? 'root' : tail);
+
+
               return Row(children: [
                 ActionChip(label: Text(label), onPressed: isLast ? null : () => onTapDir(d)),
-                const Icon(Icons.chevron_right, size: 16),
+                if (!isLast) const Icon(Icons.chevron_right, size: 16),
               ]);
             }),
           ],

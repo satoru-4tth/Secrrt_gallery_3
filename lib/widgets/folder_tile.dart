@@ -24,7 +24,18 @@ class FolderTile extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const Expanded(child: Icon(Icons.folder, size: 48)),
           Row(children: [
-            Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            Expanded(
+                child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,                // ← 少し大きく
+                      fontWeight: FontWeight.bold, // ← 太字で見やすく
+                      color: Colors.grey,          // ← 白以外にしたい場合
+                    ),
+                ),
+            ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: 'フォルダ削除',
