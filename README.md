@@ -13,8 +13,6 @@
 
 パスワード忘れた時の変更機能。<br>外部認証で本人確認
 
-<br>パスワード忘れた場合の外部認証付けて、UI整えたらテストリリース
-
 A new Flutter project.
 
 ## Getting Started
