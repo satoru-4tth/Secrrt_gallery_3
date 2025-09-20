@@ -19,7 +19,7 @@ class FolderTile extends StatelessWidget {
     return InkWell(
       onTap: onOpen,
       child: Container(
-        decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: Colors.blue.shade300, borderRadius: BorderRadius.circular(8)),
         padding: const EdgeInsets.all(8),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const Expanded(child: Icon(Icons.folder, size: 48)),
@@ -32,7 +32,7 @@ class FolderTile extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 14,                // ← 少し大きく
                       fontWeight: FontWeight.bold, // ← 太字で見やすく
-                      color: Colors.grey,          // ← 白以外にしたい場合
+                      color: Colors.white,          // ← 白以外にしたい場合
                     ),
                 ),
             ),
