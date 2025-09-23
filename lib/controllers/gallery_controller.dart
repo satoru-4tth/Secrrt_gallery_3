@@ -14,10 +14,27 @@ class GalleryController extends ChangeNotifier {
   List<Directory> _dirs = [];
   List<File> _files = [];
 
+  // 追加：選択状態（ファイル選択 → 端末へ戻す）
+  final Set<File> _selected = {};
+
   Directory? get current => _current;
   List<Directory> get dirs => _dirs;
   List<File> get files => _files;
 
+  // --- 選択操作（UIから使う） ---
+  bool isSelected(File f) => _selected.contains(f);
+  void toggleSelect(File f) {
+    if (_selected.contains(f)) {
+      _selected.remove(f);
+    } else {
+      _selected.add(f);
+    }
+    notifyListeners();
+  }
+  void clearSelection() {
+    _selected.clear();
+    notifyListeners();
+  }
 
   Future<void> deleteFolder(Directory dir) async {
     await _service.deleteFolder(dir);
@@ -49,6 +66,7 @@ class GalleryController extends ChangeNotifier {
     }
   }
 
+  // --- 端末からの取り込み（既存） ---
   Future<void> importFromSystem(BuildContext context) async {
     try {
       final assets = await _service.browseRecentAssets();
@@ -94,7 +112,129 @@ class GalleryController extends ChangeNotifier {
     return chain.reversed.toList(); // root → ... → current
   }
 
-  // ---------- 小さなUIヘルパ（ダイアログ/トースト） ----------
+  // =============================
+  // ここから「端末へ戻す」機能
+  // =============================
+
+  /// 選択中のファイルを端末ギャラリーへ戻す（一括）
+  Future<void> exportSelectedToDevice(BuildContext context, {bool askMove = false}) async {
+    if (_selected.isEmpty) {
+      _toast(context, 'ファイルを選択してください');
+      return;
+    }
+
+    // プログレス簡易表示（任意）
+    _showProgress(context, '端末へ戻しています...');
+
+    final result = await _service.exportToDeviceGallery(_selected.toList());
+
+    Navigator.of(context, rootNavigator: true).maybePop(); // 進捗を閉じる
+    _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
+
+    if (result.errors.isNotEmpty) {
+      await _showErrorsDialog(context, result.errors);
+    }
+
+    // 書き出し後に「秘密側を削除（ムーブ）」するか
+    if (askMove && result.success > 0) {
+      final doMove = await _askMoveAfterExport(context);
+      if (doMove == true) {
+        for (final f in _selected.toList()) {
+          try {
+            if (await f.exists()) await f.delete();
+          } catch (_) {}
+        }
+        await refresh();
+        _toast(context, '端末へ戻し、秘密側から削除しました');
+      }
+    }
+
+    clearSelection();
+  }
+
+  /// 現在フォルダ（サブフォルダ含む）を端末へ戻す
+  Future<void> exportCurrentFolderToDevice(BuildContext context, {bool recursive = true, bool askMove = false}) async {
+    if (_current == null) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('フォルダを端末へ戻しますか？'),
+        content: Text(recursive ? 'サブフォルダも含めて書き出します。' : 'このフォルダ直下のファイルだけを書き出します。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('実行')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    _showProgress(context, 'フォルダを書き出しています...');
+
+    final result = await _service.exportDirectoryToDeviceGallery(_current!, recursive: recursive);
+
+    Navigator.of(context, rootNavigator: true).maybePop();
+    _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
+
+    if (result.errors.isNotEmpty) {
+      await _showErrorsDialog(context, result.errors);
+    }
+
+    if (askMove && result.success > 0) {
+      final doMove = await _askMoveAfterExport(context);
+      if (doMove == true) {
+        try {
+          // フォルダ丸ごと削除（メタも含めて消える）
+          await _service.deleteFolder(_current!);
+          // 一つ上へ
+          await goUp();
+        } catch (_) {
+          // 個別削除にフォールバックしても良い
+        }
+        _toast(context, '端末へ戻し、秘密側のフォルダを削除しました');
+      }
+    }
+  }
+
+  /// 任意のフォルダを指定して端末へ戻す（フォルダタイルの「…」から呼ぶ想定）
+  Future<void> exportFolderToDevice(BuildContext context, Directory dir, {bool recursive = true, bool askMove = false}) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('フォルダを端末へ戻しますか？'),
+        content: Text(recursive ? 'サブフォルダも含めて書き出します。' : 'このフォルダ直下のファイルだけを書き出します。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('実行')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    _showProgress(context, 'フォルダを書き出しています...');
+
+    final result = await _service.exportDirectoryToDeviceGallery(dir, recursive: recursive);
+
+    Navigator.of(context, rootNavigator: true).maybePop();
+    _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
+
+    if (result.errors.isNotEmpty) {
+      await _showErrorsDialog(context, result.errors);
+    }
+
+    if (askMove && result.success > 0) {
+      final doMove = await _askMoveAfterExport(context);
+      if (doMove == true) {
+        try {
+          await _service.deleteFolder(dir);
+          await refresh();
+        } catch (_) {}
+        _toast(context, '端末へ戻し、秘密側のフォルダを削除しました');
+      }
+    }
+  }
+
+  // ---------- 小さなUIヘルパ（ダイアログ/トースト/進捗） ----------
   Future<String?> _askFolderName(BuildContext context) {
     final c = TextEditingController();
     return showDialog<String>(
@@ -128,6 +268,50 @@ class GalleryController extends ChangeNotifier {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('削除する')),
         ],
+      ),
+    );
+  }
+
+  Future<bool?> _askMoveAfterExport(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('書き出し後に秘密側を削除しますか？'),
+        content: const Text('端末へ戻したファイル/フォルダを秘密側から削除（ムーブ）します。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('削除する')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showErrorsDialog(BuildContext context, List<String> errors) {
+    return showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('失敗したファイル'),
+        content: SingleChildScrollView(child: Text(errors.join('\n'))),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+      ),
+    );
+  }
+
+  void _showProgress(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)),
+              const SizedBox(width: 16),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -7,11 +7,13 @@ class FolderTile extends StatelessWidget {
     required this.dir,
     required this.onOpen,
     required this.onDelete,
+    this.onExport, // ★ 追加
   });
 
   final Directory dir;
   final VoidCallback onOpen;
   final Future<void> Function() onDelete;
+  final Future<void> Function(Directory dir)? onExport; // ★ 追加
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +56,23 @@ class FolderTile extends StatelessWidget {
                 if (ok) await onDelete();
               },
             ),
+
+            // ★ ここ追加
+            if (onExport != null)
+              PopupMenuButton<String>(
+                onSelected: (v) async {
+                  if (v == 'export_folder') {
+                    await onExport!(dir);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'export_folder',
+                    child: Text('このフォルダを端末へ戻す'),
+                  ),
+                ],
+              ),
+
           ]),
         ]),
       ),

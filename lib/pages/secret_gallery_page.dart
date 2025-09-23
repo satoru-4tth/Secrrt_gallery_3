@@ -53,6 +53,27 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
                 icon: const Icon(Icons.create_new_folder_outlined),
                 tooltip: 'フォルダ作成',
               ),
+              IconButton(
+                tooltip: '選択を端末へ戻す',
+                onPressed: () => ctrl.exportSelectedToDevice(context),
+                icon: const Icon(Icons.undo),
+              ),
+
+              // ★ ここに追加（今開いているフォルダごと戻す）
+              PopupMenuButton<String>(
+                onSelected: (v) {
+                  if (v == 'export_here') {
+                    ctrl.exportCurrentFolderToDevice(context, recursive: true);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'export_here',
+                    child: Text('このフォルダを端末へ戻す'),
+                  ),
+                ],
+              ),
+
               const SettingsMenuButton(), // ← 新しい設定メニュー（パスワード変更/キャッシュクリア）
             ],
             bottom: BreadcrumbBar(
@@ -78,6 +99,7 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
                   dir: d,
                   onOpen: () => ctrl.goInto(d),
                   onDelete: () => ctrl.deleteFolder(d),
+                  onExport: (dir) => ctrl.exportFolderToDevice(context, dir, recursive: true), // ★ 追加
                 );
               }
               final f = ctrl.files[i - ctrl.dirs.length];

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:path/path.dart' as p;
@@ -12,6 +11,13 @@ const _metaFileName = '.album.meta.json';
 
 extension _VaultMeta on Directory {
   File get metaFile => File(p.join(path, _metaFileName));
+}
+
+class ExportResult {
+  ExportResult({required this.success, required this.fail, required this.errors});
+  final int success;
+  final int fail;
+  final List<String> errors;
 }
 
 class VaultService {
@@ -33,13 +39,20 @@ class VaultService {
     }
     // フォルダは名前昇順、ファイルは更新日降順（お好みで）
     d.sort((a, b) => a.path.toLowerCase().compareTo(b.path.toLowerCase()));
-    f.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    f.sort((a, b) =>
+        b
+            .statSync()
+            .modified
+            .compareTo(a
+            .statSync()
+            .modified));
     return (d, f);
   }
 
   /// フォルダ作成：表示名(displayName)と物理名(folderName)を分けたい場合に対応。
   /// folderName未指定なら displayName を物理名として使う（禁則文字は置換）。
-  Future<Directory> createFolder(Directory parent, String displayName, {String? folderName}) async {
+  Future<Directory> createFolder(Directory parent, String displayName,
+      {String? folderName}) async {
     final phys = (folderName ?? displayName)
         .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
         .trim();
@@ -73,12 +86,17 @@ class VaultService {
     return list.first.getAssetListPaged(page: 0, size: size);
   }
 
-  Future<void> importAssets(Directory target, List<AssetEntity> selected) async {
+  Future<void> importAssets(Directory target,
+      List<AssetEntity> selected) async {
     for (final a in selected) {
       final bytes = await a.originBytes;
       if (bytes == null) continue;
-      final ext = _extFromAsset(a, fallback: (await a.file)?.path.split('.').last);
-      final ts = DateTime.now().millisecondsSinceEpoch;
+      final ext = _extFromAsset(a, fallback: (await a.file)?.path
+          .split('.')
+          .last);
+      final ts = DateTime
+          .now()
+          .millisecondsSinceEpoch;
       final name = 'vault_${ts}_${a.id}.$ext';
       final out = File(p.join(target.path, name));
       await out.writeAsBytes(bytes, flush: true);
@@ -133,5 +151,178 @@ class VaultService {
   Future<void> renameAlbum(Directory dir, String newDisplayName) async {
     final current = await readOrCreateMeta(dir);
     await writeMeta(dir, current.copyWith(name: newDisplayName));
+  }
+
+  // --- 画像/動画を端末ギャラリーへ保存（ファイル配列専用） ---
+  Future<ExportResult> exportToDeviceGallery(List<File> files) async {
+    // 1) 権限チェック
+    final perm = await PhotoManager.requestPermissionExtend();
+    if (!perm.isAuth) {
+      return ExportResult(
+          success: 0, fail: files.length, errors: ['権限が許可されていません']);
+    }
+
+    int ok = 0,
+        ng = 0;
+    final errors = <String>[];
+
+    for (final f in files) {
+      try {
+        final ext = p.extension(f.path).toLowerCase();
+        final name = p.basename(f.path);
+        final isImage = _isImageExt(ext);
+        final isVideo = _isVideoExt(ext);
+
+        if (isImage) {
+          final bytes = await f.readAsBytes(); // ← cast不要
+          final entity = await PhotoManager.editor.saveImage(
+            bytes,
+            filename: name,
+            title: name,
+            relativePath: 'Pictures/SecretGallery',
+          );
+          if (entity == null) throw Exception('saveImage が null を返しました');
+          ok++;
+        } else if (isVideo) {
+          final entity = await PhotoManager.editor.saveVideo(
+            f,
+            title: name,
+            relativePath: 'Movies/SecretGallery',
+          );
+          if (entity == null) throw Exception('saveVideo が null を返しました');
+          ok++;
+        } else {
+          // 不明拡張子: 画像→動画の順でトライ
+          try {
+            final bytes = await f.readAsBytes();
+            final e1 = await PhotoManager.editor.saveImage(
+              bytes,
+              filename: name,
+              title: name,
+              relativePath: 'Pictures/SecretGallery',
+            );
+            if (e1 == null) throw Exception('unknown->saveImage null');
+            ok++;
+          } catch (_) {
+            final e2 = await PhotoManager.editor.saveVideo(
+              f,
+              title: name,
+              relativePath: 'Movies/SecretGallery',
+            );
+            if (e2 == null) throw Exception('unknown->saveVideo null');
+            ok++;
+          }
+        }
+      } catch (e) {
+        ng++;
+        errors.add('${f.path}: $e');
+      }
+    }
+
+    // ギャラリー更新を促す（古い端末だと必要）
+    await PhotoManager.clearFileCache();
+
+    return ExportResult(success: ok, fail: ng, errors: errors);
+  }
+
+  // --- フォルダ（サブフォルダ含む）を書き出し、相対パスを再現 ---
+  Future<ExportResult> exportDirectoryToDeviceGallery(Directory targetDir,
+      {bool recursive = true}) async {
+    final root = await ensureVaultRoot();
+
+    final perm = await PhotoManager.requestPermissionExtend();
+    if (!perm.isAuth) {
+      final count = await _countFiles(targetDir, recursive: recursive);
+      return ExportResult(
+          success: 0, fail: count, errors: ['権限が許可されていません']);
+    }
+
+    int ok = 0,
+        ng = 0;
+    final errors = <String>[];
+
+    await for (final e in targetDir.list(
+        recursive: recursive, followLinks: false)) {
+      if (e is! File) continue;
+      if (_shouldSkip(e)) continue; // メタ/隠しファイル除外
+
+      final rel = p.relative(e.path, from: root.path); // vaultからの相対
+      final dirOnly = p.dirname(rel); // 例: Trip/Day1
+      final baseName = p.basename(e.path);
+      final ext = p.extension(e.path).toLowerCase();
+
+      try {
+        if (_isImageExt(ext)) {
+          final bytes = await e.readAsBytes();
+          final relPath = (dirOnly == '.' || dirOnly.isEmpty)
+              ? 'Pictures/SecretGallery'
+              : 'Pictures/SecretGallery/$dirOnly';
+          final saved = await PhotoManager.editor.saveImage(
+              bytes, filename: baseName, title: baseName, relativePath: relPath
+          );
+          if (saved == null) throw Exception('saveImage null');
+          ok++;
+        } else if (_isVideoExt(ext)) {
+          final relPath = (dirOnly == '.' || dirOnly.isEmpty)
+              ? 'Movies/SecretGallery'
+              : 'Movies/SecretGallery/$dirOnly';
+          final saved = await PhotoManager.editor.saveVideo(
+              e, title: baseName, relativePath: relPath
+          );
+          if (saved == null) throw Exception('saveVideo null');
+          ok++;
+        } else {
+          // 不明拡張子: 画像→動画の順でトライ
+          try {
+            final bytes = await e.readAsBytes();
+            final relPath = (dirOnly == '.' || dirOnly.isEmpty)
+                ? 'Pictures/SecretGallery'
+                : 'Pictures/SecretGallery/$dirOnly';
+            final saved = await PhotoManager.editor.saveImage(
+                bytes, filename: baseName, title: baseName,  relativePath: relPath
+            );
+            if (saved == null) throw Exception('unknown->saveImage null');
+            ok++;
+          } catch (_) {
+            final relPath = (dirOnly == '.' || dirOnly.isEmpty)
+                ? 'Movies/SecretGallery'
+                : 'Movies/SecretGallery/$dirOnly';
+            final saved = await PhotoManager.editor.saveVideo(
+                e, title: baseName, relativePath: relPath
+            );
+            if (saved == null) throw Exception('unknown->saveVideo null');
+            ok++;
+          }
+        }
+      } catch (err) {
+        ng++;
+        errors.add('${e.path}: $err');
+      }
+    }
+
+    await PhotoManager.clearFileCache();
+    return ExportResult(success: ok, fail: ng, errors: errors);
+  }
+
+// --- helpers（VaultServiceクラス内に置く） ---
+  bool _isImageExt(String ext) =>
+      {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.bmp'}.contains(ext);
+
+  bool _isVideoExt(String ext) =>
+      {'.mp4', '.mov', '.m4v', '.avi', '.webm'}.contains(ext);
+
+  bool _shouldSkip(File f) {
+    final name = p.basename(f.path);
+    if (name == _metaFileName) return true; // メタJSON除外
+    if (name.startsWith('.')) return true; // 隠し/OSゴミ(.DS_Store等)
+    return false;
+  }
+
+  Future<int> _countFiles(Directory dir, {bool recursive = true}) async {
+    int c = 0;
+    await for (final e in dir.list(recursive: recursive, followLinks: false)) {
+      if (e is File && !_shouldSkip(e)) c++;
+    }
+    return c;
   }
 }
