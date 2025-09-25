@@ -1,3 +1,5 @@
+//秘密ギャラリーの画面を表示する
+
 import 'package:flutter/material.dart';
 import '../controllers/gallery_controller.dart';
 import '../services/vault_service.dart';
