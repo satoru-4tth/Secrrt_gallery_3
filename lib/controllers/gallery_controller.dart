@@ -1,3 +1,6 @@
+//ギャラリーのデータを管理する
+//フォルダやファイルの一覧を取得、更新、削除する。
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
