@@ -1,3 +1,4 @@
+// アルバムのメタデータ(データを説明するための付加情報)を管理するモデルクラス(現実のものをプラグラム上で型として表現したもの)
 // models/album_meta.dart
 class AlbumMeta {
   final String name;
