@@ -1,3 +1,4 @@
+// パスワード関係の処理
 import 'dart:convert';
 import 'dart:math';
 import 'package:cryptography/cryptography.dart';
