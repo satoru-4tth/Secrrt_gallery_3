@@ -1,3 +1,4 @@
+// アプリ内のキャッシュを削除する
 // lib/services/cache_service.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
