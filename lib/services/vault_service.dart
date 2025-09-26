@@ -1,3 +1,4 @@
+//Vault内のファイルやフォルダを管理し、デバイスギャラリーとのデータのやり取りを行うサービスクラス
 import 'dart:io';
 import 'dart:convert';
 
