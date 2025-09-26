@@ -1,3 +1,4 @@
+// 計算機のデザインと表示などを設定しているファイル
 import 'package:flutter/material.dart';
 
 enum ButtonType { normal, helper, operator, equals }
