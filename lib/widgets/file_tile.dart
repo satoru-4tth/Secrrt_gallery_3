@@ -1,3 +1,5 @@
+
+// ファイルをタイル表示するウィジェットを定義している
 import 'dart:io';
 import 'package:flutter/material.dart';
 

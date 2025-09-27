@@ -1,4 +1,4 @@
-// lib/widgets/settings_menu_button.dart
+// 右上に配置する「設定メニュー」ボタンを定義している
 import 'package:flutter/material.dart';
 import '../services/cache_service.dart';
 import '../pages/change_password_page.dart';
