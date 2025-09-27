@@ -16,28 +16,74 @@ class GalleryController extends ChangeNotifier {
   Directory? _current;
   List<Directory> _dirs = [];
   List<File> _files = [];
-
-  // 追加：選択状態（ファイル選択 → 端末へ戻す）
-  final Set<File> _selected = {};
-
   Directory? get current => _current;
   List<Directory> get dirs => _dirs;
   List<File> get files => _files;
 
-  // --- 選択操作（UIから使う） ---
-  bool isSelected(File f) => _selected.contains(f);
+  // 追加：選択状態（ファイル選択 → 端末へ戻す）
+// ★ File ではなく path で持つ。refresh() 後も一致させるため
+  final Set<String> _selectedPaths = {};
+
+// --- 選択状態のゲッター（UIで使う） ---
+  List<File> get selectedFiles =>
+      _files.where((f) => _selectedPaths.contains(f.path)).toList();
+  int get selectedCount => _selectedPaths.length;
+  bool get isSelecting => _selectedPaths.isNotEmpty;
+
+// --- 選択操作 ---
+  bool isSelected(File f) => _selectedPaths.contains(f.path);
+
   void toggleSelect(File f) {
-    if (_selected.contains(f)) {
-      _selected.remove(f);
+    final p = f.path;
+    if (_selectedPaths.contains(p)) {
+      _selectedPaths.remove(p);
     } else {
-      _selected.add(f);
+      _selectedPaths.add(p);
     }
     notifyListeners();
   }
+
   void clearSelection() {
-    _selected.clear();
+    _selectedPaths.clear();
     notifyListeners();
   }
+
+// 任意：全選択
+  void selectAll() {
+    _selectedPaths
+      ..clear()
+      ..addAll(_files.map((e) => e.path));
+    notifyListeners();
+  }
+
+  // ▼▼▼ ここに追加（deleteSelected） ▼▼▼
+  Future<void> deleteSelected(BuildContext context) async {
+    final targets = selectedFiles;
+    if (targets.isEmpty) {
+      _toast(context, 'ファイルを選択してください');
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('選択したファイルを削除しますか？'),
+        content: Text('対象: ${targets.length} 件'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('キャンセル')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('削除')),
+        ],
+      ),
+    ) ?? false;
+    if (!ok) return;
+
+    for (final f in targets) {
+      try { if (await f.exists()) await f.delete(); } catch (_) {}
+    }
+    clearSelection();
+    await refresh();
+    _toast(context, '削除しました');
+  }
+// ▲▲▲ ここまで追加 ▲▲▲
 
   Future<void> deleteFolder(Directory dir) async {
     await _service.deleteFolder(dir);
@@ -55,6 +101,10 @@ class GalleryController extends ChangeNotifier {
     final (d, f) = await _service.listEntries(_current!);
     _dirs = d;
     _files = f;
+
+    // ▼ 追加：存在しない選択を掃除
+    _selectedPaths.removeWhere((p) => !_files.any((x) => x.path == p));
+
     notifyListeners();
   }
 
@@ -91,6 +141,7 @@ class GalleryController extends ChangeNotifier {
   }
 
   void goInto(Directory d) {
+    clearSelection(); // フォルダ移動時に選択解除
     _current = d;
     refresh();
   }
@@ -98,6 +149,7 @@ class GalleryController extends ChangeNotifier {
   Future<void> goUp() async {
     if (_root == null || _current == null) return;
     if (_current!.path == _root!.path) return;
+    clearSelection(); // フォルダ移動時に選択解除
     _current = _current!.parent;
     await refresh();
   }
@@ -121,28 +173,27 @@ class GalleryController extends ChangeNotifier {
 
   /// 選択中のファイルを端末ギャラリーへ戻す（一括）
   Future<void> exportSelectedToDevice(BuildContext context, {bool askMove = false}) async {
-    if (_selected.isEmpty) {
+    final targets = selectedFiles; // ★ 置換
+    if (targets.isEmpty) {
       _toast(context, 'ファイルを選択してください');
       return;
     }
 
-    // プログレス簡易表示（任意）
     _showProgress(context, '端末へ戻しています...');
 
-    final result = await _service.exportToDeviceGallery(_selected.toList());
+    final result = await _service.exportToDeviceGallery(targets); // ★ 置換
 
-    Navigator.of(context, rootNavigator: true).maybePop(); // 進捗を閉じる
+    Navigator.of(context, rootNavigator: true).maybePop();
     _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
 
     if (result.errors.isNotEmpty) {
       await _showErrorsDialog(context, result.errors);
     }
 
-    // 書き出し後に「秘密側を削除（ムーブ）」するか
     if (askMove && result.success > 0) {
       final doMove = await _askMoveAfterExport(context);
       if (doMove == true) {
-        for (final f in _selected.toList()) {
+        for (final f in targets) { // ★ 置換
           try {
             if (await f.exists()) await f.delete();
           } catch (_) {}
