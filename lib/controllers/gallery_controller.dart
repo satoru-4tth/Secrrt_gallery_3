@@ -1,11 +1,11 @@
-//ギャラリーのデータを管理する
-//フォルダやファイルの一覧を取得、更新、削除する。
+// ギャラリーのデータを管理する
+// フォルダやファイルの一覧を取得、更新、削除する。
 
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import '../services/vault_service.dart';
-import 'dart:typed_data';
 
 class GalleryController extends ChangeNotifier {
   GalleryController(this._service);
@@ -21,16 +21,16 @@ class GalleryController extends ChangeNotifier {
   List<File> get files => _files;
 
   // 追加：選択状態（ファイル選択 → 端末へ戻す）
-// ★ File ではなく path で持つ。refresh() 後も一致させるため
+  // ★ File ではなく path で持つ。refresh() 後も一致させるため
   final Set<String> _selectedPaths = {};
 
-// --- 選択状態のゲッター（UIで使う） ---
+  // --- 選択状態のゲッター（UIで使う） ---
   List<File> get selectedFiles =>
       _files.where((f) => _selectedPaths.contains(f.path)).toList();
   int get selectedCount => _selectedPaths.length;
   bool get isSelecting => _selectedPaths.isNotEmpty;
 
-// --- 選択操作 ---
+  // --- 選択操作 ---
   bool isSelected(File f) => _selectedPaths.contains(f.path);
 
   void toggleSelect(File f) {
@@ -48,7 +48,7 @@ class GalleryController extends ChangeNotifier {
     notifyListeners();
   }
 
-// 任意：全選択
+  // 任意：全選択
   void selectAll() {
     _selectedPaths
       ..clear()
@@ -73,17 +73,20 @@ class GalleryController extends ChangeNotifier {
           FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('削除')),
         ],
       ),
-    ) ?? false;
+    ) ??
+        false;
     if (!ok) return;
 
     for (final f in targets) {
-      try { if (await f.exists()) await f.delete(); } catch (_) {}
+      try {
+        if (await f.exists()) await f.delete();
+      } catch (_) {}
     }
     clearSelection();
     await refresh();
     _toast(context, '削除しました');
   }
-// ▲▲▲ ここまで追加 ▲▲▲
+  // ▲▲▲ ここまで追加 ▲▲▲
 
   Future<void> deleteFolder(Directory dir) async {
     await _service.deleteFolder(dir);
@@ -168,22 +171,27 @@ class GalleryController extends ChangeNotifier {
   }
 
   // =============================
-  // ここから「端末へ戻す」機能
+  // ここから「端末へ戻す」機能（修正版）
   // =============================
 
   /// 選択中のファイルを端末ギャラリーへ戻す（一括）
   Future<void> exportSelectedToDevice(BuildContext context, {bool askMove = false}) async {
-    final targets = selectedFiles; // ★ 置換
+    final targets = selectedFiles;
     if (targets.isEmpty) {
       _toast(context, 'ファイルを選択してください');
       return;
     }
 
-    _showProgress(context, '端末へ戻しています...');
+    if (!await _ensurePhotoPermission(context)) return;
 
-    final result = await _service.exportToDeviceGallery(targets); // ★ 置換
+    final result = await _runWithProgress(
+      context,
+      '端末へ戻しています...',
+          () => _service.exportToDeviceGallery(targets),
+      timeout: const Duration(minutes: 2),
+    );
+    if (result == null) return;
 
-    Navigator.of(context, rootNavigator: true).maybePop();
     _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
 
     if (result.errors.isNotEmpty) {
@@ -193,7 +201,7 @@ class GalleryController extends ChangeNotifier {
     if (askMove && result.success > 0) {
       final doMove = await _askMoveAfterExport(context);
       if (doMove == true) {
-        for (final f in targets) { // ★ 置換
+        for (final f in targets) {
           try {
             if (await f.exists()) await f.delete();
           } catch (_) {}
@@ -207,7 +215,8 @@ class GalleryController extends ChangeNotifier {
   }
 
   /// 現在フォルダ（サブフォルダ含む）を端末へ戻す
-  Future<void> exportCurrentFolderToDevice(BuildContext context, {bool recursive = true, bool askMove = false}) async {
+  Future<void> exportCurrentFolderToDevice(BuildContext context,
+      {bool recursive = true, bool askMove = false}) async {
     if (_current == null) return;
 
     final ok = await showDialog<bool>(
@@ -223,11 +232,16 @@ class GalleryController extends ChangeNotifier {
     );
     if (ok != true) return;
 
-    _showProgress(context, 'フォルダを書き出しています...');
+    if (!await _ensurePhotoPermission(context)) return;
 
-    final result = await _service.exportDirectoryToDeviceGallery(_current!, recursive: recursive);
+    final result = await _runWithProgress(
+      context,
+      'フォルダを書き出しています...',
+          () => _service.exportDirectoryToDeviceGallery(_current!, recursive: recursive),
+      timeout: const Duration(minutes: 5),
+    );
+    if (result == null) return;
 
-    Navigator.of(context, rootNavigator: true).maybePop();
     _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
 
     if (result.errors.isNotEmpty) {
@@ -251,7 +265,8 @@ class GalleryController extends ChangeNotifier {
   }
 
   /// 任意のフォルダを指定して端末へ戻す（フォルダタイルの「…」から呼ぶ想定）
-  Future<void> exportFolderToDevice(BuildContext context, Directory dir, {bool recursive = true, bool askMove = false}) async {
+  Future<void> exportFolderToDevice(BuildContext context, Directory dir,
+      {bool recursive = true, bool askMove = false}) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -265,11 +280,16 @@ class GalleryController extends ChangeNotifier {
     );
     if (ok != true) return;
 
-    _showProgress(context, 'フォルダを書き出しています...');
+    if (!await _ensurePhotoPermission(context)) return;
 
-    final result = await _service.exportDirectoryToDeviceGallery(dir, recursive: recursive);
+    final result = await _runWithProgress(
+      context,
+      'フォルダを書き出しています...',
+          () => _service.exportDirectoryToDeviceGallery(dir, recursive: recursive),
+      timeout: const Duration(minutes: 5),
+    );
+    if (result == null) return;
 
-    Navigator.of(context, rootNavigator: true).maybePop();
     _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
 
     if (result.errors.isNotEmpty) {
@@ -289,13 +309,47 @@ class GalleryController extends ChangeNotifier {
   }
 
   // ---------- 小さなUIヘルパ（ダイアログ/トースト/進捗） ----------
+
+  /// ★ 追加：進捗付きで安全に実行。失敗/例外/タイムアウトでも必ず閉じる
+  Future<T?> _runWithProgress<T>(
+      BuildContext context,
+      String message,
+      Future<T> Function() body, {
+        Duration timeout = const Duration(minutes: 2),
+      }) async {
+    _showProgress(context, message);
+    try {
+      return await body().timeout(timeout);
+    } catch (e) {
+      _toast(context, '処理に失敗しました: $e');
+      return null;
+    } finally {
+      // ダイアログを必ず閉じる
+      Navigator.of(context, rootNavigator: true).maybePop();
+    }
+  }
+
+  /// ★ 追加：写真権限を確保。未許可ならダイアログとトーストを出して早期return
+  Future<bool> _ensurePhotoPermission(BuildContext context) async {
+    final perm = await PhotoManager.requestPermissionExtend();
+    if (!perm.hasAccess) {
+      _toast(context, '写真へのアクセスが許可されていません');
+      return false;
+    }
+    return true;
+    // （Android 13+ は READ_MEDIA_* 系でOK。iOS も PhotoKit 権限が必要）
+  }
+
   Future<String?> _askFolderName(BuildContext context) {
     final c = TextEditingController();
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('新しいフォルダ'),
-        content: TextField(controller: c, decoration: const InputDecoration(hintText: 'フォルダ名'), autofocus: true),
+        content: TextField(
+            controller: c,
+            decoration: const InputDecoration(hintText: 'フォルダ名'),
+            autofocus: true),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('キャンセル')),
           FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('作成')),
@@ -343,10 +397,13 @@ class GalleryController extends ChangeNotifier {
   Future<void> _showErrorsDialog(BuildContext context, List<String> errors) {
     return showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('失敗したファイル'),
         content: SingleChildScrollView(child: Text(errors.join('\n'))),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+        actions: [
+          // ★ 修正：外側 context ではなく ctx を閉じる
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
       ),
     );
   }
@@ -385,20 +442,27 @@ class _AssetPickerSheet extends StatefulWidget {
 
 class _AssetPickerSheetState extends State<_AssetPickerSheet> {
   final _sel = <AssetEntity>{};
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: DraggableScrollableSheet(
-        initialChildSize: 0.9, minChildSize: 0.5, maxChildSize: 0.95, expand: false,
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
         builder: (_, sc) => Column(
           children: [
             const Padding(
-              padding: EdgeInsets.all(12), child: Text('取り込む写真/動画を選択', style: TextStyle(fontWeight: FontWeight.bold)),
+              padding: EdgeInsets.all(12),
+              child: Text('取り込む写真/動画を選択', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             Expanded(
               child: GridView.builder(
-                controller: sc, padding: const EdgeInsets.all(8),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, mainAxisSpacing: 6, crossAxisSpacing: 6),
+                controller: sc,
+                padding: const EdgeInsets.all(8),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4, mainAxisSpacing: 6, crossAxisSpacing: 6),
                 itemCount: widget.assets.length,
                 itemBuilder: (_, i) {
                   final a = widget.assets[i];
@@ -410,8 +474,17 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
                       return GestureDetector(
                         onTap: () => setState(() => on ? _sel.remove(a) : _sel.add(a)),
                         child: Stack(children: [
-                          Positioned.fill(child: th != null ? Image.memory(th, fit: BoxFit.cover) : const ColoredBox(color: Colors.black12)),
-                          if (on) const Positioned(right: 4, top: 4, child: Icon(Icons.check_circle, color: Colors.lightBlueAccent)),
+                          Positioned.fill(
+                            child: th != null
+                                ? Image.memory(th, fit: BoxFit.cover)
+                                : const ColoredBox(color: Colors.black12),
+                          ),
+                          if (on)
+                            const Positioned(
+                              right: 4,
+                              top: 4,
+                              child: Icon(Icons.check_circle, color: Colors.lightBlueAccent),
+                            ),
                         ]),
                       );
                     },
@@ -422,10 +495,19 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: Row(children: [
-                Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル'))),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('キャンセル'),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: FilledButton(onPressed: _sel.isEmpty ? null : () => Navigator.pop(context, _sel.toList()),
-                    child: Text('取り込み (${_sel.length})'))),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _sel.isEmpty ? null : () => Navigator.pop(context, _sel.toList()),
+                    child: Text('取り込み (${_sel.length})'),
+                  ),
+                ),
               ]),
             ),
           ],

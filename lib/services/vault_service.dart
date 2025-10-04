@@ -7,6 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../models/album_meta.dart';
+import 'dart:typed_data';
+import 'dart:async';
 
 const _metaFileName = '.album.meta.json';
 
@@ -78,7 +80,8 @@ class VaultService {
 
   Future<List<AssetEntity>> browseRecentAssets({int size = 200}) async {
     final perm = await PhotoManager.requestPermissionExtend();
-    if (!perm.isAuth) throw StateError('no-permission');
+    if (!perm.hasAccess) throw StateError('no-permission'); // or return ExportResult...
+
     final list = await PhotoManager.getAssetPathList(
       type: RequestType.common,
       onlyAll: true,
@@ -129,6 +132,29 @@ class VaultService {
     return (fallback != null && fallback.isNotEmpty) ? fallback : 'bin';
   }
 
+  Future<AssetEntity?> _saveImageWithTimeout(
+      Uint8List bytes, {
+        required String filename,
+        required String title,
+        required String relativePath,
+        Duration timeout = const Duration(seconds: 20),
+      }) {
+    return PhotoManager.editor
+        .saveImage(bytes, filename: filename, title: title, relativePath: relativePath)
+        .timeout(timeout);
+  }
+
+  Future<AssetEntity?> _saveVideoWithTimeout(
+      File file, {
+        required String title,
+        required String relativePath,
+        Duration timeout = const Duration(seconds: 30),
+      }) {
+    return PhotoManager.editor
+        .saveVideo(file, title: title, relativePath: relativePath)
+        .timeout(timeout);
+  }
+
   // ===== ここからメタ（論理名）関連 =====
 
   Future<AlbumMeta> readOrCreateMeta(Directory dir) async {
@@ -158,7 +184,7 @@ class VaultService {
   Future<ExportResult> exportToDeviceGallery(List<File> files) async {
     // 1) 権限チェック
     final perm = await PhotoManager.requestPermissionExtend();
-    if (!perm.isAuth) {
+    if (!perm.hasAccess) {
       return ExportResult(
           success: 0, fail: files.length, errors: ['権限が許可されていません']);
     }
@@ -175,17 +201,20 @@ class VaultService {
         final isVideo = _isVideoExt(ext);
 
         if (isImage) {
-          final bytes = await f.readAsBytes(); // ← cast不要
-          final entity = await PhotoManager.editor.saveImage(
+          // 画像保存
+          final bytes = await f.readAsBytes();
+          final entity = await _saveImageWithTimeout(
             bytes,
             filename: name,
             title: name,
             relativePath: 'Pictures/SecretGallery',
           );
+
           if (entity == null) throw Exception('saveImage が null を返しました');
           ok++;
         } else if (isVideo) {
-          final entity = await PhotoManager.editor.saveVideo(
+          // 動画保存
+          final entity = await _saveVideoWithTimeout(
             f,
             title: name,
             relativePath: 'Movies/SecretGallery',
@@ -196,7 +225,8 @@ class VaultService {
           // 不明拡張子: 画像→動画の順でトライ
           try {
             final bytes = await f.readAsBytes();
-            final e1 = await PhotoManager.editor.saveImage(
+            // try: 画像
+            final e1 = await _saveImageWithTimeout(
               bytes,
               filename: name,
               title: name,
@@ -205,7 +235,8 @@ class VaultService {
             if (e1 == null) throw Exception('unknown->saveImage null');
             ok++;
           } catch (_) {
-            final e2 = await PhotoManager.editor.saveVideo(
+            // catch: 動画
+            final e2 = await _saveVideoWithTimeout(
               f,
               title: name,
               relativePath: 'Movies/SecretGallery',
@@ -232,7 +263,7 @@ class VaultService {
     final root = await ensureVaultRoot();
 
     final perm = await PhotoManager.requestPermissionExtend();
-    if (!perm.isAuth) {
+    if (!perm.hasAccess) {
       final count = await _countFiles(targetDir, recursive: recursive);
       return ExportResult(
           success: 0, fail: count, errors: ['権限が許可されていません']);
@@ -258,8 +289,12 @@ class VaultService {
           final relPath = (dirOnly == '.' || dirOnly.isEmpty)
               ? 'Pictures/SecretGallery'
               : 'Pictures/SecretGallery/$dirOnly';
-          final saved = await PhotoManager.editor.saveImage(
-              bytes, filename: baseName, title: baseName, relativePath: relPath
+          // 画像
+          final saved = await _saveImageWithTimeout(
+            bytes,
+            filename: baseName,
+            title: baseName,
+            relativePath: relPath,
           );
           if (saved == null) throw Exception('saveImage null');
           ok++;
@@ -267,8 +302,10 @@ class VaultService {
           final relPath = (dirOnly == '.' || dirOnly.isEmpty)
               ? 'Movies/SecretGallery'
               : 'Movies/SecretGallery/$dirOnly';
-          final saved = await PhotoManager.editor.saveVideo(
-              e, title: baseName, relativePath: relPath
+          final saved = await _saveVideoWithTimeout(
+            e,
+            title: baseName,
+            relativePath: relPath,
           );
           if (saved == null) throw Exception('saveVideo null');
           ok++;
@@ -279,8 +316,12 @@ class VaultService {
             final relPath = (dirOnly == '.' || dirOnly.isEmpty)
                 ? 'Pictures/SecretGallery'
                 : 'Pictures/SecretGallery/$dirOnly';
-            final saved = await PhotoManager.editor.saveImage(
-                bytes, filename: baseName, title: baseName,  relativePath: relPath
+            // try: 画像
+            final saved = await _saveImageWithTimeout(
+            bytes,
+            filename: baseName,
+            title: baseName,
+            relativePath: relPath,
             );
             if (saved == null) throw Exception('unknown->saveImage null');
             ok++;
@@ -288,8 +329,11 @@ class VaultService {
             final relPath = (dirOnly == '.' || dirOnly.isEmpty)
                 ? 'Movies/SecretGallery'
                 : 'Movies/SecretGallery/$dirOnly';
-            final saved = await PhotoManager.editor.saveVideo(
-                e, title: baseName, relativePath: relPath
+            // catch: 動画
+            final saved = await _saveVideoWithTimeout(
+            e,
+            title: baseName,
+            relativePath: relPath,
             );
             if (saved == null) throw Exception('unknown->saveVideo null');
             ok++;
