@@ -210,7 +210,8 @@ class GalleryController extends ChangeNotifier {
         _toast(context, '端末へ戻し、秘密側から削除しました');
       }
     }
-
+    // ★ 追加：export 後は常に UI を更新
+    await refresh();
     clearSelection();
   }
 
@@ -262,6 +263,7 @@ class GalleryController extends ChangeNotifier {
         _toast(context, '端末へ戻し、秘密側のフォルダを削除しました');
       }
     }
+    await refresh();
   }
 
   /// 任意のフォルダを指定して端末へ戻す（フォルダタイルの「…」から呼ぶ想定）
@@ -306,6 +308,7 @@ class GalleryController extends ChangeNotifier {
         _toast(context, '端末へ戻し、秘密側のフォルダを削除しました');
       }
     }
+    await refresh();
   }
 
   // ---------- 小さなUIヘルパ（ダイアログ/トースト/進捗） ----------
@@ -317,6 +320,8 @@ class GalleryController extends ChangeNotifier {
       Future<T> Function() body, {
         Duration timeout = const Duration(minutes: 2),
       }) async {
+    // どのナビゲータに開くかを固定
+    final navigator = Navigator.of(context, rootNavigator: true);
     _showProgress(context, message);
     try {
       return await body().timeout(timeout);
@@ -324,8 +329,12 @@ class GalleryController extends ChangeNotifier {
       _toast(context, '処理に失敗しました: $e');
       return null;
     } finally {
-      // ダイアログを必ず閉じる
-      Navigator.of(context, rootNavigator: true).maybePop();
+      // ダイアログを必ず閉じる（maybePop だと閉じ損ねることがある）
+      try {
+        navigator.pop();
+      } catch (_) {
+        // 既に閉じていた場合などは無視
+      }
     }
   }
 
@@ -385,7 +394,7 @@ class GalleryController extends ChangeNotifier {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('書き出し後に秘密側を削除しますか？'),
-        content: const Text('端末へ戻したファイル/フォルダを秘密側から削除（ムーブ）します。'),
+        content: const Text('端末へ戻したファイル/フォルダを秘密側から削除します。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('削除する')),
@@ -411,6 +420,7 @@ class GalleryController extends ChangeNotifier {
   void _showProgress(BuildContext context, String message) {
     showDialog(
       context: context,
+      useRootNavigator: true, // 端末に保存した後のグルグル対応
       barrierDismissible: false,
       builder: (_) => WillPopScope(
         onWillPop: () async => false,

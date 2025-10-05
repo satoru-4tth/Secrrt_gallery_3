@@ -10,6 +10,22 @@ import '../models/album_meta.dart';
 import 'dart:typed_data';
 import 'dart:async';
 
+// 表示にいらないファイルをはじく処理
+bool _looksLikeThumbOrCache(String name) {
+  final lower = name.toLowerCase();
+  return lower.startsWith('thumb_') ||
+      lower.startsWith('.thumb') ||
+      lower.endsWith('.thumb.jpg') ||
+      lower.startsWith('preview_') ||
+      lower.contains('.cache') ||
+      lower.startsWith('._'); // 一部OSが生成する隠しファイル
+}
+
+const _allowedExts = {
+  'jpg','jpeg','png','gif','webp','heic','heif','bmp',
+  'mp4','mov','m4v','avi','mkv','webm',
+};
+
 const _metaFileName = '.album.meta.json';
 
 extension _VaultMeta on Directory {
@@ -33,24 +49,47 @@ class VaultService {
     return dir;
   }
 
+// これで既存の listEntries を丸ごと置き換え
   Future<(List<Directory>, List<File>)> listEntries(Directory dir) async {
-    final d = <Directory>[];
-    final f = <File>[];
-    for (final e in dir.listSync()) {
-      if (e is Directory) d.add(e);
-      if (e is File) f.add(e);
+    final entries = await dir.list(followLinks: false).toList();
+
+    final dirs = <Directory>[];
+    final files = <File>[];
+
+    for (final e in entries) {
+      if (e is Directory) {
+        final name = p.basename(e.path);
+        if (name.startsWith('.')) continue; // 隠しフォルダ除外
+        dirs.add(e);
+      } else if (e is File) {
+        final name = p.basename(e.path);
+
+        // メタ・隠し・サムネ/キャッシュ系を除外
+        if (name == _metaFileName) continue;
+        if (name.startsWith('.')) continue;
+        if (_looksLikeThumbOrCache(name)) continue;
+
+        // 拡張子チェック（“元データ”のみに限定）
+        final ext = p.extension(name).toLowerCase().replaceFirst('.', '');
+        if (!_allowedExts.contains(ext)) continue;
+
+        // 0バイト除外（ダミー保険）
+        try {
+          if (await e.length() == 0) continue;
+        } catch (_) {
+          continue;
+        }
+
+        files.add(e);
+      }
     }
-    // フォルダは名前昇順、ファイルは更新日降順（お好みで）
-    d.sort((a, b) => a.path.toLowerCase().compareTo(b.path.toLowerCase()));
-    f.sort((a, b) =>
-        b
-            .statSync()
-            .modified
-            .compareTo(a
-            .statSync()
-            .modified));
-    return (d, f);
+
+    // 並び順は今まで通り（フォルダ:名前昇順 / ファイル:更新日降順）
+    dirs.sort((a, b) => a.path.toLowerCase().compareTo(b.path.toLowerCase()));
+    files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    return (dirs, files);
   }
+
 
   /// フォルダ作成：表示名(displayName)と物理名(folderName)を分けたい場合に対応。
   /// folderName未指定なら displayName を物理名として使う（禁則文字は置換）。

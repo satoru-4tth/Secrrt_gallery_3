@@ -20,7 +20,14 @@ class FileTile extends StatelessWidget {
         builder: (_) => _ViewerPage(file: file, isVideo: _isVideo, onDeleted: onDeleted),
       )),
       child: Stack(children: [
-        Positioned.fill(child: Image.file(file, fit: BoxFit.cover)),
+        Positioned.fill(
+          child: Image.file(
+            file,
+            fit: BoxFit.cover,
+            // ★ ファイル壊れてる場合でもエラーメッセージを出さずに空表示にする
+            errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+          ),
+        ),
         if (_isVideo) const Positioned(right: 4, bottom: 4, child: Icon(Icons.play_circle, size: 20, color: Colors.white)),
       ]),
     );

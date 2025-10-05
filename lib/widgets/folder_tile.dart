@@ -39,6 +39,7 @@ class FolderTile extends StatelessWidget {
                     ),
                 ),
             ),
+            //　フォルダのアイコンに表示する機能の実装
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: 'フォルダ削除',
@@ -58,21 +59,22 @@ class FolderTile extends StatelessWidget {
               },
             ),
 
+            // フォルダを端末に戻す機能はめんどくさそうなので非表示にして保留
             // ★ ここ追加
-            if (onExport != null)
-              PopupMenuButton<String>(
-                onSelected: (v) async {
-                  if (v == 'export_folder') {
-                    await onExport!(dir);
-                  }
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
-                    value: 'export_folder',
-                    child: Text('このフォルダを端末へ戻す'),
-                  ),
-                ],
-              ),
+            // if (onExport != null)
+            //   PopupMenuButton<String>(
+            //     onSelected: (v) async {
+            //       if (v == 'export_folder') {
+            //         await onExport!(dir);
+            //       }
+            //     },
+            //     itemBuilder: (_) => const [
+            //       PopupMenuItem(
+            //         value: 'export_folder',
+            //         child: Text('このフォルダを端末へ戻す'),
+            //       ),
+            //     ],
+            //   ),
 
           ]),
         ]),

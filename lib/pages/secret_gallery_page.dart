@@ -6,7 +6,6 @@ import '../services/vault_service.dart';
 import '../widgets/breadcrumb_bar.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
-// import '../pages/change_password_page.dart'; // ← このファイルでは未使用なら消してOK
 import '../widgets/settings_menu_button.dart';
 
 class SecretGalleryPage extends StatefulWidget {
@@ -79,19 +78,20 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
                   icon: const Icon(Icons.create_new_folder_outlined),
                   tooltip: 'フォルダ作成',
                 ),
-                PopupMenuButton<String>(
-                  onSelected: (v) {
-                    if (v == 'export_here') {
-                      ctrl.exportCurrentFolderToDevice(context, recursive: true);
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: 'export_here',
-                      child: Text('このフォルダを端末へ戻す'),
-                    ),
-                  ],
-                ),
+                //上のメニューバーのフォルダを端末に戻す項目を表示するところ
+                // PopupMenuButton<String>(
+                //   onSelected: (v) {
+                //     if (v == 'export_here') {
+                //       ctrl.exportCurrentFolderToDevice(context, recursive: true);
+                //     }
+                //   },
+                //   itemBuilder: (_) => const [
+                //     PopupMenuItem(
+                //       value: 'export_here',
+                //       child: Text('このフォルダを端末へ戻す'),
+                //     ),
+                //   ],
+                // ),
                 const SettingsMenuButton(),
               ],
             ],
@@ -103,8 +103,8 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
           ),
           body: isLoading
               ? const Center(child: CircularProgressIndicator())
-              : empty
-              ? const Center(child: Text('このフォルダは空です'))
+              // : empty
+              // ? const Center(child: Text('このフォルダは空です'))
               : GridView.builder(
             padding: const EdgeInsets.all(8),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
