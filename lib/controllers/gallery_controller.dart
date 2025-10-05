@@ -174,6 +174,26 @@ class GalleryController extends ChangeNotifier {
   // ここから「端末へ戻す」機能（修正版）
   // =============================
 
+  // ---------- 小さなUIヘルパ（ダイアログ/トースト/進捗） ----------
+// の少し上か近くに追加してOK
+
+  Future<bool> _confirmExportSelected(BuildContext context, int count) async {
+    return (await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('確認'),
+        // ★ リクエストどおりの文言を表示（件数も添えるなら2行目を追加）
+        content: Text('選択したデータを端末に戻します。\n対象: $count 件'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('キャンセル')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('端末に戻す')),
+        ],
+      ),
+    )) ??
+        false;
+  }
+
+
   /// 選択中のファイルを端末ギャラリーへ戻す（一括）
   Future<void> exportSelectedToDevice(BuildContext context, {bool askMove = false}) async {
     final targets = selectedFiles;
@@ -181,6 +201,10 @@ class GalleryController extends ChangeNotifier {
       _toast(context, 'ファイルを選択してください');
       return;
     }
+
+    // ★ ここを追加：確認ポップアップ
+    final go = await _confirmExportSelected(context, targets.length);
+    if (!go) return;
 
     if (!await _ensurePhotoPermission(context)) return;
 
@@ -393,8 +417,8 @@ class GalleryController extends ChangeNotifier {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('書き出し後に秘密側を削除しますか？'),
-        content: const Text('端末へ戻したファイル/フォルダを秘密側から削除します。'),
+        title: const Text('秘密側を削除しますか？'),
+        content: const Text('端末へ戻したファイルを秘密側から削除します。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('削除する')),

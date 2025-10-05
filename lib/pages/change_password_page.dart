@@ -90,6 +90,50 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
+            // ★ ここから追加：案内と注意
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('「数字4桁」+「＝」でログインできます。',
+                    style: TextStyle(color: Colors.black)
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade100),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('注意：パスワードを忘れるとログインできなくなります。',
+                        style: TextStyle(color: Colors.black)
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // ★ ここまで追加
             FutureBuilder<bool>(
               future: PasswordService().hasPassword(),
               builder: (_, snap) {
@@ -98,11 +142,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (has) ...[
-                      const Text('現在のPIN'),
+                      const Text('現在のPIN（数字4桁）'),
                       _pinField(controller: _old, hint: '現在の4桁PIN'),
                       const SizedBox(height: 16),
                     ],
-                    const Text('新しいPIN'),
+                    const Text('新しいPIN（数字4桁）'),
                     _pinField(controller: _new1, hint: '新しい4桁PIN'),
                     const SizedBox(height: 16),
                     const Text('新しいPIN（確認）'),
