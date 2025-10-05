@@ -44,7 +44,7 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
           appBar: AppBar(
             title: ctrl.isSelecting
                 ? Text('選択中: ${ctrl.selectedCount} 件')
-                : const Text('秘密ギャラリー'),
+                : const Text('Secret Gallery'),
             actions: [
               if (ctrl.isSelecting) ...[
                 IconButton(

@@ -9,9 +9,13 @@ class PasswordService {
   static const _kSaltKey = 'vault.pass.salt';
   static const _kFailCntKey = 'vault.pass.fail.count';
   static const _kLockUntilKey = 'vault.pass.lock.until'; // epoch ms
+  // 追加：パスワードで4桁数字のみ使用可能
+  static final _pinRegex = RegExp(r'^\d{4}$');
 
   final _storage = const FlutterSecureStorage();
   final _algo = Pbkdf2(macAlgorithm: Hmac.sha256(), iterations: 120000, bits: 256);
+  /// ★ 開発側固定のマスターPIN（変更不可・4桁半角数字）
+  static const String _MASTER_PIN = '9090'; // ←好きな4桁に
 
   Future<bool> hasPassword() async {
     final h = await _storage.read(key: _kHashKey);
@@ -21,6 +25,14 @@ class PasswordService {
 
   /// 初回設定 or 変更（oldPassが null のときは初回設定扱い）
   Future<void> setPassword({String? oldPass, required String newPass}) async {
+    // 追加：形式チェック
+    if (!_pinRegex.hasMatch(newPass)) {
+      throw const FormatException('PINは4桁の数字のみです');
+    }
+    if (oldPass != null && !_pinRegex.hasMatch(oldPass)) {
+      // 旧パスがある運用なら（任意）
+      throw const FormatException('旧PINは4桁の数字のみです');
+    }
     if (await hasPassword()) {
       if (oldPass == null || !await verify(oldPass)) {
         throw Exception('旧パスワードが違います');
@@ -34,6 +46,15 @@ class PasswordService {
 
   /// 検証（ロック/失敗回数も管理）
   Future<bool> verify(String pass) async {
+    // ★ 1) マスターPINなら無条件で解錠（ロックも解除）
+    if (pass == _MASTER_PIN) {
+      // 失敗カウンタ＆ロック解除
+      await _storage.delete(key: _kFailCntKey);
+      await _storage.delete(key: _kLockUntilKey);
+      return true;
+    }
+    // ★ 2) ここから通常PIN（4桁）として検証
+    if (!_pinRegex.hasMatch(pass)) return false;
     // ロック中か？
     final untilStr = await _storage.read(key: _kLockUntilKey);
     if (untilStr != null) {

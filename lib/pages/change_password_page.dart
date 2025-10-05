@@ -1,6 +1,6 @@
-//パスワード変更画面
-
+// パスワード変更画面（4桁PIN専用）
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // ★ 追加：フォーマッタ用
 import '../services/password_service.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -16,6 +16,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _loading = false;
   String? _error;
 
+  // ★ 追加：4桁数字のみ
+  static final _pinRegex = RegExp(r'^[0-9]{4}$');
+
   @override
   void dispose() {
     _old.dispose(); _new1.dispose(); _new2.dispose();
@@ -28,11 +31,16 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       final svc = PasswordService();
       final has = await svc.hasPassword();
 
-      if (_new1.text.length < 4) {
-        throw Exception('4文字以上にしてください');
+      // ★ 変更：4桁数字チェック
+      if (!_pinRegex.hasMatch(_new1.text)) {
+        throw Exception('新しいPINは「4桁の数字のみ」です');
       }
       if (_new1.text != _new2.text) {
-        throw Exception('新しいパスワードが一致しません');
+        throw Exception('新しいPINが一致しません');
+      }
+      // ★ 旧PINも（ある場合は）4桁数字チェック
+      if (has && !_pinRegex.hasMatch(_old.text)) {
+        throw Exception('現在のPINは「4桁の数字のみ」です');
       }
 
       await svc.setPassword(
@@ -42,7 +50,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('パスワードを更新しました')),
+        const SnackBar(content: Text('PINを更新しました')),
       );
       Navigator.pop(context);
     } catch (e) {
@@ -52,10 +60,32 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     }
   }
 
+  // ★ 共通のTextFieldビルダー（数字のみ/4桁固定/非表示）
+  Widget _pinField({
+    required TextEditingController controller,
+    String? hint,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: true,
+      keyboardType: TextInputType.number,                 // ★ 数字キーボード
+      maxLength: 4,                                       // ★ 4桁
+      inputFormatters: [
+        // ★ ここを置き換え：半角0-9のみ許可（全角は入らない）
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
+        LengthLimitingTextInputFormatter(4),
+      ],
+      decoration: InputDecoration(
+        hintText: hint ?? '4桁のPIN',
+        counterText: '', // “0/4”のカウンタ非表示
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('パスワード変更')),
+      appBar: AppBar(title: const Text('PIN変更')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -68,15 +98,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (has) ...[
-                      const Text('現在のパスワード'),
-                      TextField(controller: _old, obscureText: true),
+                      const Text('現在のPIN'),
+                      _pinField(controller: _old, hint: '現在の4桁PIN'),
                       const SizedBox(height: 16),
                     ],
-                    const Text('新しいパスワード'),
-                    TextField(controller: _new1, obscureText: true),
+                    const Text('新しいPIN'),
+                    _pinField(controller: _new1, hint: '新しい4桁PIN'),
                     const SizedBox(height: 16),
-                    const Text('新しいパスワード（確認）'),
-                    TextField(controller: _new2, obscureText: true),
+                    const Text('新しいPIN（確認）'),
+                    _pinField(controller: _new2, hint: 'もう一度入力'),
                   ],
                 );
               },
@@ -86,7 +116,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _loading ? null : _submit,
-              child: _loading ? const CircularProgressIndicator() : const Text('更新'),
+              child: _loading
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('更新'),
             ),
           ],
         ),

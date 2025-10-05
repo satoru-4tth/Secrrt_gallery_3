@@ -32,7 +32,7 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
             if (!atRoot)
             FilledButton.tonal(
               onPressed: onUp,
-              child: const Row(children: [Icon(Icons.arrow_upward, size: 16), SizedBox(width: 4), Text('上へ')]),
+              child: const Row(children: [Icon(Icons.arrow_upward, size: 16), SizedBox(width: 4), Text('一つ上のフォルダへ')]),
             ),
 
 
