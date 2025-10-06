@@ -1,14 +1,15 @@
-//
 import 'package:flutter/material.dart';
 import 'controllers/calculator_controller.dart';
 import 'ui/widgets/calc_button.dart';
 import 'pages/secret_gallery_page.dart';
 import 'pages/change_password_page.dart';
-import 'services/password_service.dart'; // ★ 追加
+import 'services/password_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-//アプリケーションのエントリーポイント
-//constコンパイル時に値が固定される不変オブジェクト(イミュータブル)
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
   runApp(const MyApp());
 }
 
@@ -44,46 +45,107 @@ class CalculatorPage extends StatefulWidget {
 class _CalculatorPageState extends State<CalculatorPage> {
   final controller = CalculatorController();
 
+  // ▼ ここにバナーのフィールドを置く
+  BannerAd? _banner;
+
+  @override
+  void initState() {
+    super.initState();
+    _maybeShowInitPassInfo();
+
+    // ▼ バナー読み込み
+    _banner = BannerAd(
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Androidバナーの公式テストID
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) => setState(() {}),
+        onAdFailedToLoad: (ad, err) {
+          debugPrint('Banner failed: $err');
+          ad.dispose();
+        },
+      ),
+    )..load();
+  }
+
+  @override
+  void dispose() {
+    _banner?.dispose();
+    super.dispose();
+  }
+
+  // ★ 追加：初回だけダイアログを出す
+  Future<void> _maybeShowInitPassInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    const key = 'init_pass_info_shown_v1';
+    final shown = prefs.getBool(key) ?? false;
+    if (shown) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('初回のご案内'),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('ダウンロードありがとうございます！'),
+              SizedBox(height: 12),
+              Text('初期パスワードは 1234 です。'),
+              Text('計算機で「1 2 3 4」と入力して「=」を押すと秘密ギャラリーが開きます。'),
+              SizedBox(height: 8),
+              Text('※ パスワードは後から「設定 > パスワード変更」で変更できます。'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      await prefs.setBool(key, true);
+    });
+  }
+
   // ★ async 化。setState の中で await はしない
   Future<void> _handleKey(String value) async {
     switch (value) {
       case 'AC':
         setState(controller.clear);
         break;
-
       case '⌫':
         setState(controller.backspace);
         break;
-
       case '=':
         final svc = PasswordService();
         final has = await svc.hasPassword();
-
         final input = controller.input;
-        // 未設定なら '1234' を暫定で許可
         final ok = has ? await svc.verify(input) : (input == '1234');
 
         if (ok) {
-          setState(controller.clear); // 表示を消してから遷移予約
+          setState(controller.clear);
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             await Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
             );
             if (!has && context.mounted) {
-              _promptSetPassword(context); // ★ 定義を下に追加
+              _promptSetPassword(context);
             }
           });
         } else {
-          setState(controller.evaluate); // 通常の計算として評価
+          setState(controller.evaluate);
         }
         break;
-
       default:
         setState(() => controller.add(value));
     }
   }
 
-  // ★ 追加：未設定時にパスワード設定を促すダイアログ
   void _promptSetPassword(BuildContext context) {
     showDialog(
       context: context,
@@ -147,10 +209,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
               children: [
                 Row(
                   children: [
-                    CalcButton(
-                      'AC',
-                      type: ButtonType.helper,
-                      onPressed: () { _handleKey('AC'); }, // ★ () {} で包む
+                    CalcButton('AC', type: ButtonType.helper,
+                      onPressed: () { _handleKey('AC'); },
                       onLongPress: () => setState(controller.clear),
                     ),
                     CalcButton('⌫', type: ButtonType.helper, onPressed: () { _handleKey('⌫'); }),
@@ -196,6 +256,13 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 ),
               ],
             ),
+            // ▼ バナー表示（一番下）
+            if (_banner != null)
+              SizedBox(
+                width: _banner!.size.width.toDouble(),
+                height: _banner!.size.height.toDouble(),
+                child: AdWidget(ad: _banner!),
+              ),
           ],
         ),
       ),
