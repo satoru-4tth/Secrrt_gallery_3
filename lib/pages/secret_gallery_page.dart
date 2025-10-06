@@ -1,4 +1,4 @@
-//秘密ギャラリーの画面を表示する
+// 秘密ギャラリーの画面を表示する
 
 import 'package:flutter/material.dart';
 import 'package:secret_gallery_3/controllers/gallery_controller.dart';
@@ -7,6 +7,7 @@ import '../widgets/breadcrumb_bar.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
 import '../widgets/settings_menu_button.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // ★ 追加
 
 class SecretGalleryPage extends StatefulWidget {
   const SecretGalleryPage({super.key});
@@ -17,16 +18,34 @@ class SecretGalleryPage extends StatefulWidget {
 class _SecretGalleryPageState extends State<SecretGalleryPage> {
   late final GalleryController ctrl;
 
+  // ▼ バナー用フィールド
+  BannerAd? _banner;
+
   @override
   void initState() {
     super.initState();
     ctrl = GalleryController(VaultService());
     // 非同期初期化
     WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.init());
+
+    // ▼ バナー読み込み（ギャラリー用のユニットIDに差し替え推奨）
+    _banner = BannerAd(
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // ★ Androidバナー公式テストID
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) => setState(() {}),
+        onAdFailedToLoad: (ad, err) {
+          debugPrint('Gallery banner failed: $err');
+          ad.dispose();
+        },
+      ),
+    )..load();
   }
 
   @override
   void dispose() {
+    _banner?.dispose();
     ctrl.dispose();
     super.dispose();
   }
@@ -38,7 +57,7 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
       builder: (_, __) {
         final crumbs = ctrl.breadcrumbDirs();
         final isLoading = ctrl.current == null;
-        final empty = ctrl.dirs.isEmpty && ctrl.files.isEmpty;
+        // final empty = ctrl.dirs.isEmpty && ctrl.files.isEmpty;
 
         return Scaffold(
           appBar: AppBar(
@@ -78,20 +97,6 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
                   icon: const Icon(Icons.create_new_folder_outlined),
                   tooltip: 'フォルダ作成',
                 ),
-                //上のメニューバーのフォルダを端末に戻す項目を表示するところ
-                // PopupMenuButton<String>(
-                //   onSelected: (v) {
-                //     if (v == 'export_here') {
-                //       ctrl.exportCurrentFolderToDevice(context, recursive: true);
-                //     }
-                //   },
-                //   itemBuilder: (_) => const [
-                //     PopupMenuItem(
-                //       value: 'export_here',
-                //       child: Text('このフォルダを端末へ戻す'),
-                //     ),
-                //   ],
-                // ),
                 const SettingsMenuButton(),
               ],
             ],
@@ -101,69 +106,75 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
               onTapDir: ctrl.goInto,
             ),
           ),
-          body: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              // : empty
-              // ? const Center(child: Text('このフォルダは空です'))
-              : GridView.builder(
-            padding: const EdgeInsets.all(8),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8,
-            ),
-            itemCount: ctrl.dirs.length + ctrl.files.length,
-            itemBuilder: (_, i) {
-              if (i < ctrl.dirs.length) {
-                final d = ctrl.dirs[i];
-                return FolderTile(
-                  dir: d,
-                  onOpen: () => ctrl.goInto(d),
-                  onDelete: () => ctrl.deleteFolder(d),
-                  onExport: (dir) => ctrl.exportFolderToDevice(context, dir, recursive: true), // ★ 追加
-                );
-              }
-              final f = ctrl.files[i - ctrl.dirs.length];
-              final selected = ctrl.isSelected(f);
-
-              return GestureDetector(
-                // 長押しで選択開始/切替
-                onLongPress: () => ctrl.toggleSelect(f),
-
-                // 選択モード中だけタップ=トグル、通常時は子にタップを渡す（FileTileの既存挙動を維持）
-                onTap: ctrl.isSelecting ? () => ctrl.toggleSelect(f) : null,
-                behavior: HitTestBehavior.opaque,
-
-                child: Stack(
-                  children: [
-                    // 既存の表示はそのまま
-                    Positioned.fill(
-                      child: FileTile(
-                        file: f,
-                        onDeleted: ctrl.refresh,
-                      ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // コンテンツ本体
+                Expanded(
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : GridView.builder(
+                    padding: const EdgeInsets.all(8),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8,
                     ),
+                    itemCount: ctrl.dirs.length + ctrl.files.length,
+                    itemBuilder: (_, i) {
+                      if (i < ctrl.dirs.length) {
+                        final d = ctrl.dirs[i];
+                        return FolderTile(
+                          dir: d,
+                          onOpen: () => ctrl.goInto(d),
+                          onDelete: () => ctrl.deleteFolder(d),
+                          onExport: (dir) => ctrl.exportFolderToDevice(
+                              context, dir, recursive: true),
+                        );
+                      }
+                      final f = ctrl.files[i - ctrl.dirs.length];
+                      final selected = ctrl.isSelected(f);
 
-                    // 選択中の見た目（枠＆チェック）。IgnorePointerで下の操作を邪魔しない
-                    if (selected) ...[
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(width: 2),
-                              borderRadius: BorderRadius.circular(8),
+                      return GestureDetector(
+                        onLongPress: () => ctrl.toggleSelect(f),
+                        onTap: ctrl.isSelecting ? () => ctrl.toggleSelect(f) : null,
+                        behavior: HitTestBehavior.opaque,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: FileTile(file: f, onDeleted: ctrl.refresh),
                             ),
-                          ),
+                            if (selected) ...[
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(width: 2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const Positioned(
+                                right: 6,
+                                top: 6,
+                                child: Icon(Icons.check_circle, size: 20),
+                              ),
+                            ],
+                          ],
                         ),
-                      ),
-                      const Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Icon(Icons.check_circle, size: 20),
-                      ),
-                    ],
-                  ],
+                      );
+                    },
+                  ),
                 ),
-              );
-            },
+
+                // ▼ バナー（最下部）
+                if (_banner != null)
+                  SizedBox(
+                    width: _banner!.size.width.toDouble(),
+                    height: _banner!.size.height.toDouble(),
+                    child: AdWidget(ad: _banner!),
+                  ),
+              ],
+            ),
           ),
         );
       },
