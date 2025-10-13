@@ -9,7 +9,7 @@ Scaffold(
             colors: [Color(0xFFB993D6), Color(0xFF8CA6DB)],
           ).createShader(bounds),
           child: const Text(
-            'タブーの部屋',
+            'ENTER TABOO\'S ROOM',
             style: TextStyle(
               fontSize: 38,
               fontWeight: FontWeight.bold,
