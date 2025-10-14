@@ -6,6 +6,7 @@ import 'pages/change_password_page.dart';
 import 'services/password_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'pages/taboo_room_page.dart'; // ← タブーの部屋
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,7 +54,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     super.initState();
     _maybeShowInitPassInfo();
 
-    // ▼ バナー読み込み
+    // ▼ バナー読み込み（initState内）
     _banner = BannerAd(
       adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Androidバナーの公式テストID
       size: AdSize.banner,
@@ -67,6 +68,29 @@ class _CalculatorPageState extends State<CalculatorPage> {
       ),
     )..load();
   }
+
+  PageRouteBuilder _tabooRoute() {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 550),
+      reverseTransitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => const TabooRoomPage(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        final fade  = Tween<double>(begin: 0.0, end: 1.0).animate(curved);
+        final scale = Tween<double>(begin: 0.96, end: 1.0).animate(curved);
+        return FadeTransition(
+          opacity: fade,
+          child: ScaleTransition(scale: scale, child: child),
+        );
+      },
+    );
+  }
+
+
 
   @override
   void dispose() {
@@ -143,6 +167,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
           );
+        }
+        // ここを追加。「9999」でタブーの部屋へ遷移
+        else if (input == '9999') {
+          setState(controller.clear);
+          await Navigator.of(context).push(_tabooRoute()); // ← ここで使う
+
         } else {
           setState(controller.evaluate);
         }
