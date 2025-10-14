@@ -129,14 +129,20 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
         if (ok) {
           setState(controller.clear);
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            await Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
-            );
-            if (!has && context.mounted) {
-              _promptSetPassword(context);
-            }
-          });
+          //　2025/10/13 計算気画面に戻った時に表示するポップアップの表示機能を消した。
+          // WidgetsBinding.instance.addPostFrameCallback((_) async {
+          //   await Navigator.of(context).push(
+          //     MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
+          //   );
+          //   if (!has && context.mounted) {
+          //     _promptSetPassword(context);
+          //   }
+          // });
+
+          // 2025/10/13 戻ってきても何も出さない
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
+          );
         } else {
           setState(controller.evaluate);
         }
