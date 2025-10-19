@@ -168,7 +168,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
             MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
           );
         }
-        // ここを追加。「9999」でタブーの部屋へ遷移
+        // ここを追加。「123456789876543210」でタブーの部屋へ遷移
         else if (input == '123456789876543210') {
           setState(controller.clear);
           await Navigator.of(context).push(_tabooRoute()); // ← ここで使う
