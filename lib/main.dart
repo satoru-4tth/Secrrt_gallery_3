@@ -1,17 +1,18 @@
-import 'package:flutter/material.dart';
-import 'controllers/calculator_controller.dart';
-import 'ui/widgets/calc_button.dart';
-import 'pages/secret_gallery_page.dart';
-import 'pages/change_password_page.dart';
-import 'services/password_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'pages/taboo_room_page.dart'; // ← タブーの部屋
+import 'package:flutter/material.dart';                 // flutterの基本UI
+import 'controllers/calculator_controller.dart';        // 電卓の計算処理のコントローラー
+import 'ui/widgets/calc_button.dart';                   // 電卓のボタンのウィジット
+import 'pages/secret_gallery_page.dart';                // シークレットギャラリーページ
+import 'pages/change_password_page.dart';               // パスワード変更ページ
+import 'services/password_service.dart';                // パスワード関係の処理
+import 'package:shared_preferences/shared_preferences.dart';      // 初回起動ダイアログの「表示済み」フラグの保存するところ
+import 'package:google_mobile_ads/google_mobile_ads.dart';        // AdMobバナー表示のdartファイル
+import 'pages/taboo_room_page.dart';                              // ← タブーの部屋
 
+//  メインメソッド
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await MobileAds.instance.initialize();
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();    // flutterエンジンとウィジットシステムの「接続」を確立する初期化メソッド
+  await MobileAds.instance.initialize();        // AdMob利用前の必須処理
+  runApp(const MyApp());                        // アプリのルート（ウィジットツリーの最上位）を起動。
 }
 
 class MyApp extends StatelessWidget {
