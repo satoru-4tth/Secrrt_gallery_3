@@ -1,4 +1,4 @@
-// ファイルをタイル表示するウィジェット（画像＆動画サムネ対応 / 再生ビューあり）
+// ファイルをタイル表示するウィジェット（画像＆動画サムネ対応 / 再生ビューあり / ★ドラッグ対応）
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -6,8 +6,17 @@ import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 class FileTile extends StatefulWidget {
-  const FileTile({super.key, required this.file, required this.onDeleted});
+  const FileTile({
+    super.key,
+    required this.file,
+    required this.onDeleted,
+  });
+
+  // このFileをドラッグで他フォルダへ移動したいので、
+  // 後でDragTarget側（フォルダ側）がこのFileを受け取れるようにする
   final File file;
+
+  // 画像・動画を削除した後に一覧を更新するためのコールバック
   final Future<void> Function() onDeleted;
 
   @override
@@ -50,7 +59,8 @@ class _FileTileState extends State<FileTile> {
 
   @override
   Widget build(BuildContext context) {
-    final child = _isVideo
+    // 画像/動画サムネ本体
+    final previewChild = _isVideo
         ? (_thumb != null
         ? Image.memory(_thumb!, fit: BoxFit.cover)
         : const ColoredBox(color: Colors.black26))
@@ -60,30 +70,122 @@ class _FileTileState extends State<FileTile> {
       errorBuilder: (_, __, ___) => const SizedBox.shrink(),
     );
 
+    // ────────────────────────────────
+    // ここが重要：
+    // 元は GestureDetector(... child: Stack(...)) でしたが、
+    // それを LongPressDraggable<File> でラップします。
+    //
+    // ・data: widget.file で、このタイルが持つFileをドラッグ情報として渡す
+    // ・feedback: ドラッグ中に指の下に出るプレビュー
+    // ・child:    もともとのタイル表示
+    // ・childWhenDragging: ドラッグ中は元の場所を半透明表示
+    // ────────────────────────────────
+    return LongPressDraggable<File>(
+      data: widget.file,
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+
+      // 指についてくる見た目（ドラッグ中のプレビュー）
+      feedback: _buildDragFeedback(previewChild),
+
+      // ドラッグ中に元の場所へ残す見た目（薄くする等）
+      childWhenDragging: Opacity(
+        opacity: 0.3,
+        child: _buildTapArea(previewChild),
+      ),
+
+      // 通常表示（タップでビューアを開く挙動は今までどおり維持）
+      child: _buildTapArea(previewChild),
+    );
+  }
+
+  // タップで画像/動画ビューアを開く領域
+  Widget _buildTapArea(Widget previewChild) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => _ViewerPage(
-          file: widget.file,
-          isVideo: _isVideo,
-          onDeleted: widget.onDeleted,
-        ),
-      )),
+      onTap: () {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => _ViewerPage(
+            file: widget.file,
+            isVideo: _isVideo,
+            onDeleted: widget.onDeleted,
+          ),
+        ));
+      },
       child: Stack(
         children: [
-          Positioned.fill(child: child),
+          // サムネ全体
+          Positioned.fill(child: previewChild),
+
+          // 動画アイコン
           if (_isVideo)
             const Positioned(
               right: 4,
               bottom: 4,
-              child: Icon(Icons.play_circle, size: 22, color: Colors.white),
+              child: Icon(
+                Icons.play_circle,
+                size: 22,
+                color: Colors.white,
+              ),
             ),
+
+          // 右上にドラッグできそうなハンドルを少し出しても良い（UIヒント）
+          Positioned(
+            right: 4,
+            top: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Icon(
+                Icons.drag_indicator,
+                size: 16,
+                color: Colors.white54,
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  // ドラッグ中カーソル下に表示される仮のプレビュー
+  Widget _buildDragFeedback(Widget previewChild) {
+    return Opacity(
+      opacity: 0.8,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.purpleAccent, width: 2),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.black,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Positioned.fill(child: previewChild),
+              if (_isVideo)
+                const Positioned(
+                  right: 4,
+                  bottom: 4,
+                  child: Icon(
+                    Icons.play_circle,
+                    size: 22,
+                    color: Colors.white,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-// ===== ここから詳細ビュー =====
+// ===== ここから詳細ビュー（画像/動画閲覧画面） =====
 
 class _ViewerPage extends StatefulWidget {
   const _ViewerPage({
@@ -104,7 +206,7 @@ class _ViewerPageState extends State<_ViewerPage> {
   VideoPlayerController? _controller;
   bool _ready = false;
 
-  // ▼ 追加：ドラッグ中の一時値や状態
+  // ▼ シークバー用の一時状態
   bool _dragging = false;
   double? _dragValueMs;
   bool _wasPlaying = false;
@@ -130,8 +232,9 @@ class _ViewerPageState extends State<_ViewerPage> {
     if (widget.isVideo) {
       _controller = VideoPlayerController.file(widget.file)
         ..addListener(() {
-          // 再生位置や状態が変わったら再描画（ドラッグ中は抑制）
-          if (mounted && !_dragging) setState(() {});
+          if (mounted && !_dragging) {
+            setState(() {}); // シーク位置や再生状態を更新
+          }
         })
         ..initialize().then((_) {
           if (!mounted) return;
@@ -151,10 +254,18 @@ class _ViewerPageState extends State<_ViewerPage> {
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('削除しますか？'),
-        content: Text(widget.file.path.split(Platform.pathSeparator).last),
+        content: Text(
+          widget.file.path.split(Platform.pathSeparator).last,
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('削除')),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('削除'),
+          ),
         ],
       ),
     ) ??
@@ -179,33 +290,36 @@ class _ViewerPageState extends State<_ViewerPage> {
       IconButton(icon: const Icon(Icons.delete), onPressed: _confirmDelete),
     ];
 
+    // 画像の場合
     if (!widget.isVideo) {
-      // 画像表示
       return Scaffold(
         appBar: AppBar(actions: actions),
         body: Center(
           child: Image.file(
             widget.file,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Text('画像を表示できません'),
+            errorBuilder: (_, __, ___) =>
+            const Text('画像を表示できません'),
           ),
         ),
       );
     }
 
-    // ── 動画表示（シークバー付き）──
+    // 動画の場合
     final initialized = _ready && _controller != null;
     final totalMs = _duration.inMilliseconds.toDouble();
     final currentMs = (_dragging && _dragValueMs != null)
         ? _dragValueMs!.clamp(0, totalMs)
-        : _position.inMilliseconds.toDouble().clamp(0, totalMs);
+        : _position.inMilliseconds
+        .toDouble()
+        .clamp(0, totalMs);
 
     return Scaffold(
       appBar: AppBar(actions: actions),
       body: initialized
           ? Column(
         children: [
-          // プレイヤー本体
+          // 動画表示
           AspectRatio(
             aspectRatio: _controller!.value.aspectRatio == 0
                 ? 16 / 9
@@ -215,46 +329,63 @@ class _ViewerPageState extends State<_ViewerPage> {
               children: [
                 VideoPlayer(_controller!),
 
-                // タップで再生/一時停止
+                // タップで再生/停止
                 Positioned.fill(
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        final playing = _controller!.value.isPlaying;
-                        playing ? _controller!.pause() : _controller!.play();
+                        final playing =
+                            _controller!.value.isPlaying;
+                        playing
+                            ? _controller!.pause()
+                            : _controller!.play();
                         setState(() {});
                       },
                     ),
                   ),
                 ),
 
-                // 再生/一時停止アイコン（オーバーレイ表示）
+                // 再生/一時停止アイコン
                 IgnorePointer(
                   child: AnimatedOpacity(
-                    opacity: _controller!.value.isPlaying ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: const Icon(Icons.play_circle_outline, size: 84, color: Colors.white70),
+                    opacity: _controller!.value.isPlaying
+                        ? 0.0
+                        : 1.0,
+                    duration:
+                    const Duration(milliseconds: 150),
+                    child: const Icon(
+                      Icons.play_circle_outline,
+                      size: 84,
+                      color: Colors.white70,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // ▼ シークバー＋時間表示
+          // シークバー + 時刻表示
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                Text(_fmt(Duration(milliseconds: currentMs.round()))),
+                Text(
+                  _fmt(Duration(
+                      milliseconds: currentMs.round())),
+                ),
                 Expanded(
                   child: Slider(
                     min: 0,
                     max: totalMs,
-                    value: currentMs.isNaN ? 0.0 : currentMs.toDouble(),
+                    value: currentMs.isNaN
+                        ? 0.0
+                        : currentMs.toDouble(),
                     onChangeStart: (_) {
                       _dragging = true;
-                      _wasPlaying = _controller!.value.isPlaying;
+                      _wasPlaying =
+                          _controller!.value.isPlaying;
                       _controller!.pause();
                     },
                     onChanged: (v) {
@@ -263,8 +394,11 @@ class _ViewerPageState extends State<_ViewerPage> {
                     onChangeEnd: (v) async {
                       _dragging = false;
                       _dragValueMs = null;
-                      await _controller!.seekTo(Duration(milliseconds: v.round()));
-                      if (_wasPlaying) _controller!.play();
+                      await _controller!.seekTo(Duration(
+                          milliseconds: v.round()));
+                      if (_wasPlaying) {
+                        _controller!.play();
+                      }
                       setState(() {});
                     },
                   ),
@@ -274,22 +408,32 @@ class _ViewerPageState extends State<_ViewerPage> {
             ),
           ),
 
-          // 任意の補助ボタン（10秒戻る/進む）
+          //10秒巻き戻し / 再生 / 10秒送り
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
                 icon: const Icon(Icons.replay_10),
                 onPressed: () async {
-                  final target = _position - const Duration(seconds: 10);
-                  await _controller!.seekTo(target < Duration.zero ? Duration.zero : target);
+                  final target =
+                      _position - const Duration(seconds: 10);
+                  await _controller!.seekTo(
+                    target < Duration.zero
+                        ? Duration.zero
+                        : target,
+                  );
                   setState(() {});
                 },
               ),
               IconButton(
-                icon: Icon(_controller!.value.isPlaying ? Icons.pause : Icons.play_arrow),
+                icon: Icon(
+                  _controller!.value.isPlaying
+                      ? Icons.pause
+                      : Icons.play_arrow,
+                ),
                 onPressed: () async {
-                  final playing = _controller!.value.isPlaying;
+                  final playing =
+                      _controller!.value.isPlaying;
                   if (playing) {
                     await _controller!.pause();
                   } else {
@@ -301,8 +445,13 @@ class _ViewerPageState extends State<_ViewerPage> {
               IconButton(
                 icon: const Icon(Icons.forward_10),
                 onPressed: () async {
-                  final target = _position + const Duration(seconds: 10);
-                  await _controller!.seekTo(target > _duration ? _duration : target);
+                  final target =
+                      _position + const Duration(seconds: 10);
+                  await _controller!.seekTo(
+                    target > _duration
+                        ? _duration
+                        : target,
+                  );
                   setState(() {});
                 },
               ),
