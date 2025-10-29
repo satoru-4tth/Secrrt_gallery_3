@@ -82,7 +82,12 @@ class _FileTileState extends State<FileTile> {
     // ────────────────────────────────
     return LongPressDraggable<File>(
       data: widget.file,
-      dragAnchorStrategy: pointerDragAnchorStrategy,
+
+     // Offsetで値が変わらないため↓の常に指の位置に固定する設定をコメントアウトする
+     // dragAnchorStrategy: pointerDragAnchorStrategy,
+
+      // ドラッグ中のファイルの位置
+      feedbackOffset: const Offset(-20, -20),
 
       // 指についてくる見た目（ドラッグ中のプレビュー）
       feedback: _buildDragFeedback(previewChild),
