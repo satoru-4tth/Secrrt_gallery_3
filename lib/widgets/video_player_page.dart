@@ -20,6 +20,16 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
   double? _dragValueMs;
   bool _wasPlaying = false;
 
+  // 倍速候補と現在の速度
+  final List<double> _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+  double _speed = 1.0;
+
+  Future<void> _setSpeed(double s) async {
+    _speed = s;
+    await _vc.setPlaybackSpeed(s);
+    if (mounted) setState(() {});
+  }
+
   Duration get _duration {
     final d = _vc.value.duration;
     return d == Duration.zero ? const Duration(milliseconds: 1) : d;
@@ -41,8 +51,9 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
       ..addListener(() {
         if (mounted && !_dragging) setState(() {});
       })
-      ..initialize().then((_) {
+      ..initialize().then((_) async {
         if (!mounted) return;
+        await _vc.setPlaybackSpeed(_speed); // 初期速度を適用
         setState(() => _ready = true);
       });
   }
@@ -56,23 +67,53 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
   @override
   Widget build(BuildContext context) {
     final initialized = _ready && _vc.value.isInitialized;
-    final totalMs = _duration.inMilliseconds.toDouble();
-    final currentMs = (_dragging && _dragValueMs != null)
-        ? _dragValueMs!.clamp(0, totalMs)
-        : _position.inMilliseconds.toDouble().clamp(0, totalMs);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.file.path.split(Platform.pathSeparator).last),
+        title: const Text('PLAYER(SG)'),
+        actions: [
+          if (initialized)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: PopupMenuButton<double>(
+                onSelected: _setSpeed,
+                itemBuilder: (context) => _speeds.map((s) {
+                  final selected = (_vc.value.playbackSpeed - s).abs() < 0.001;
+                  return PopupMenuItem<double>(
+                    value: s,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('${s}x'),
+                        if (selected) const Icon(Icons.check, size: 18),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                child: Tooltip(
+                  message: '再生速度を変更',
+                  child: Container(
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text('${_vc.value.playbackSpeed.toStringAsFixed(2)}x'),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
+
       body: initialized
           ? SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // コントロール（シークバー＋ボタン）の見込み高さを固定確保
-            const controlsHeight = 120.0; // 端末により 110〜140 程度でOK
-            final playerHeight = (constraints.maxHeight - controlsHeight)
-                .clamp(100.0, constraints.maxHeight); // 最低100px確保
+            const controlsHeight = 120.0; // 下部コントロールの想定高さ
+            final playerHeight =
+            (constraints.maxHeight - controlsHeight).clamp(100.0, constraints.maxHeight);
 
             final totalMs = _duration.inMilliseconds.toDouble();
             final currentMs = (_dragging && _dragValueMs != null)
@@ -81,7 +122,7 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
 
             return Column(
               children: [
-                // ① プレイヤー領域：画面の“残り高さ”ぴったりに固定
+                // ① プレイヤー領域
                 SizedBox(
                   height: playerHeight,
                   width: double.infinity,
@@ -127,7 +168,7 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
                   ),
                 ),
 
-                // ② コントロール群：固定高さ内に収める
+                // ② コントロール群
                 SizedBox(
                   height: controlsHeight,
                   child: Column(
@@ -154,8 +195,7 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
                                 onChangeEnd: (v) async {
                                   _dragging = false;
                                   _dragValueMs = null;
-                                  await _vc.seekTo(
-                                      Duration(milliseconds: v.round()));
+                                  await _vc.seekTo(Duration(milliseconds: v.round()));
                                   if (_wasPlaying) await _vc.play();
                                   setState(() {});
                                 },
@@ -165,7 +205,8 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
                           ],
                         ),
                       ),
-                      // ±10秒 と 再生/一時停止
+
+                      // ±10秒 と 再生/一時停止 + 倍速
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(
@@ -174,16 +215,20 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
                             IconButton(
                               icon: const Icon(Icons.replay_10),
                               onPressed: () async {
-                                final target = _position - const Duration(seconds: 10);
+                                final target =
+                                    _position - const Duration(seconds: 10);
                                 await _vc.seekTo(
-                                    target < Duration.zero ? Duration.zero : target);
+                                  target < Duration.zero ? Duration.zero : target,
+                                );
                                 setState(() {});
                               },
                             ),
                             IconButton(
-                              icon: Icon(_vc.value.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow),
+                              icon: Icon(
+                                _vc.value.isPlaying
+                                    ? Icons.pause
+                                    : Icons.play_arrow,
+                              ),
                               onPressed: () async {
                                 if (_vc.value.isPlaying) {
                                   await _vc.pause();
@@ -196,11 +241,45 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
                             IconButton(
                               icon: const Icon(Icons.forward_10),
                               onPressed: () async {
-                                final target = _position + const Duration(seconds: 10);
+                                final target =
+                                    _position + const Duration(seconds: 10);
                                 await _vc.seekTo(
-                                    target > _duration ? _duration : target);
+                                  target > _duration ? _duration : target,
+                                );
                                 setState(() {});
                               },
+                            ),
+
+                            const SizedBox(width: 8),
+                            PopupMenuButton<double>(
+                              onSelected: _setSpeed,
+                              itemBuilder: (context) => _speeds.map((s) {
+                                final selected =
+                                    (_vc.value.playbackSpeed - s).abs() < 0.001;
+                                return PopupMenuItem<double>(
+                                  value: s,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('${s}x'),
+                                      if (selected)
+                                        const Icon(Icons.check, size: 18),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.white24),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${_vc.value.playbackSpeed.toStringAsFixed(2)}x',
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -214,7 +293,6 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
         ),
       )
           : const Center(child: CircularProgressIndicator()),
-
     );
   }
 }
