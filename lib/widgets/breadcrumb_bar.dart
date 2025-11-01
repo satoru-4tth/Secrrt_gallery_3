@@ -28,8 +28,7 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
     final atRoot = crumbs.length <= 1; // ルート判定
 
     // 親ディレクトリ（1つ上）があるならここで取れる
-    final Directory? parentDir =
-    atRoot ? null : crumbs[crumbs.length - 2];
+    final Directory? parentDir = atRoot ? null : crumbs[crumbs.length - 2];
 
     return PreferredSize(
       preferredSize: preferredSize,
@@ -40,10 +39,7 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             // ルートでなければ「一つ上のフォルダへ」ボタンを表示
             if (!atRoot)
-              _buildParentDropTarget(
-                context: context,
-                parentDir: parentDir!,
-              ),
+              _buildParentDropTarget(context: context, parentDir: parentDir!),
 
             if (!atRoot) const SizedBox(width: 8),
 
@@ -90,9 +86,7 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                '上のフォルダに移動しました: ${_fileName(file)}',
-              ),
+              content: Text('上のフォルダに移動しました: ${_fileName(file)}'),
               duration: const Duration(seconds: 1),
             ),
           );
@@ -104,16 +98,13 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
         return FilledButton.tonal(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.resolveWith<Color?>(
-                  (_) => isHighlighted
+              (_) => isHighlighted
                   ? Colors.purple.shade400
                   : null, // 通常はデフォルト、ドラッグ中は紫強調
             ),
             side: WidgetStateProperty.resolveWith<BorderSide?>(
-                  (_) => isHighlighted
-                  ? const BorderSide(
-                color: Colors.purpleAccent,
-                width: 2,
-              )
+              (_) => isHighlighted
+                  ? const BorderSide(color: Colors.purpleAccent, width: 2)
                   : null,
             ),
           ),
@@ -122,9 +113,7 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
             children: [
               const Icon(Icons.arrow_upward, size: 16),
               const SizedBox(width: 4),
-              Text(
-                isHighlighted ? 'ここにドロップで一つ上のフォルダへ移動' : '一つ上のフォルダへ',
-              ),
+              Text(isHighlighted ? 'ここにドロップで一つ上のフォルダへ移動' : '一つ上のフォルダへ'),
             ],
           ),
         );

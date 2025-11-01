@@ -44,12 +44,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   void dispose() {
     _banner?.dispose();
-    _old.dispose(); _new1.dispose(); _new2.dispose();
+    _old.dispose();
+    _new1.dispose();
+    _new2.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final svc = PasswordService();
       final has = await svc.hasPassword();
@@ -70,9 +75,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PINを更新しました')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PINを更新しました')));
       Navigator.pop(context);
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
@@ -92,10 +97,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
         LengthLimitingTextInputFormatter(4),
       ],
-      decoration: InputDecoration(
-        hintText: hint ?? '4桁のPIN',
-        counterText: '',
-      ),
+      decoration: InputDecoration(hintText: hint ?? '4桁のPIN', counterText: ''),
     );
   }
 
@@ -128,8 +130,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                           Icon(Icons.info_outline, color: Colors.blue),
                           SizedBox(width: 8),
                           Expanded(
-                            child: Text('「数字4桁」+「＝」でログインできます。',
-                                style: TextStyle(color: Colors.black)),
+                            child: Text(
+                              '「数字4桁」+「＝」でログインできます。',
+                              style: TextStyle(color: Colors.black),
+                            ),
                           ),
                         ],
                       ),
@@ -145,11 +149,16 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       child: const Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.orange,
+                          ),
                           SizedBox(width: 8),
                           Expanded(
-                            child: Text('注意：パスワードを忘れるとログインできなくなります。',
-                                style: TextStyle(color: Colors.black)),
+                            child: Text(
+                              '注意：パスワードを忘れるとログインできなくなります。',
+                              style: TextStyle(color: Colors.black),
+                            ),
                           ),
                         ],
                       ),
@@ -185,8 +194,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       onPressed: _loading ? null : _submit,
                       child: _loading
                           ? const SizedBox(
-                          height: 20, width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Text('更新'),
                     ),
                     const SizedBox(height: 8),

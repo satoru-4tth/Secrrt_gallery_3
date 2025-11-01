@@ -38,8 +38,8 @@ class CalculatorController {
       final result = _calculate(_input);
       final text = result.isFinite
           ? (result % 1 == 0
-          ? result.toInt().toString()
-          : _trimTrailingZeros(result.toStringAsFixed(10)))
+                ? result.toInt().toString()
+                : _trimTrailingZeros(result.toStringAsFixed(10)))
           : 'Error';
       _input = text;
       return text;

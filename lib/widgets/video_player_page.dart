@@ -94,12 +94,17 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
                   message: '再生速度を変更',
                   child: Container(
                     alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('${_vc.value.playbackSpeed.toStringAsFixed(2)}x'),
+                    child: Text(
+                      '${_vc.value.playbackSpeed.toStringAsFixed(2)}x',
+                    ),
                   ),
                 ),
               ),
@@ -109,189 +114,210 @@ class _SimpleVideoPlayerPageState extends State<SimpleVideoPlayerPage> {
 
       body: initialized
           ? SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            const controlsHeight = 120.0; // 下部コントロールの想定高さ
-            final playerHeight =
-            (constraints.maxHeight - controlsHeight).clamp(100.0, constraints.maxHeight);
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const controlsHeight = 120.0; // 下部コントロールの想定高さ
+                  final playerHeight = (constraints.maxHeight - controlsHeight)
+                      .clamp(100.0, constraints.maxHeight);
 
-            final totalMs = _duration.inMilliseconds.toDouble();
-            final currentMs = (_dragging && _dragValueMs != null)
-                ? _dragValueMs!.clamp(0, totalMs)
-                : _position.inMilliseconds.toDouble().clamp(0, totalMs);
+                  final totalMs = _duration.inMilliseconds.toDouble();
+                  final currentMs = (_dragging && _dragValueMs != null)
+                      ? _dragValueMs!.clamp(0, totalMs)
+                      : _position.inMilliseconds.toDouble().clamp(0, totalMs);
 
-            return Column(
-              children: [
-                // ① プレイヤー領域
-                SizedBox(
-                  height: playerHeight,
-                  width: double.infinity,
-                  child: Center(
-                    child: AspectRatio(
-                      aspectRatio:
-                      (_vc.value.aspectRatio > 0) ? _vc.value.aspectRatio : 16 / 9,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          VideoPlayer(_vc),
-                          // タップで再生/一時停止
-                          Positioned.fill(
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () async {
-                                  if (_vc.value.isPlaying) {
-                                    await _vc.pause();
-                                  } else {
-                                    await _vc.play();
-                                  }
-                                  setState(() {});
-                                },
-                              ),
-                            ),
-                          ),
-                          // 停止中アイコン
-                          IgnorePointer(
-                            child: AnimatedOpacity(
-                              opacity: _vc.value.isPlaying ? 0.0 : 1.0,
-                              duration: const Duration(milliseconds: 150),
-                              child: const Icon(
-                                Icons.play_circle_outline,
-                                size: 84,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // ② コントロール群
-                SizedBox(
-                  height: controlsHeight,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  return Column(
                     children: [
-                      // シークバー＋時間
-                      Padding(
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Row(
-                          children: [
-                            Text(_fmt(Duration(milliseconds: currentMs.round()))),
-                            Expanded(
-                              child: Slider(
-                                min: 0.0,
-                                max: totalMs,
-                                value: currentMs.isNaN ? 0.0 : currentMs.toDouble(),
-                                onChangeStart: (_) {
-                                  _dragging = true;
-                                  _wasPlaying = _vc.value.isPlaying;
-                                  _vc.pause();
-                                },
-                                onChanged: (v) => setState(() => _dragValueMs = v),
-                                onChangeEnd: (v) async {
-                                  _dragging = false;
-                                  _dragValueMs = null;
-                                  await _vc.seekTo(Duration(milliseconds: v.round()));
-                                  if (_wasPlaying) await _vc.play();
-                                  setState(() {});
-                                },
-                              ),
+                      // ① プレイヤー領域
+                      SizedBox(
+                        height: playerHeight,
+                        width: double.infinity,
+                        child: Center(
+                          child: AspectRatio(
+                            aspectRatio: (_vc.value.aspectRatio > 0)
+                                ? _vc.value.aspectRatio
+                                : 16 / 9,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                VideoPlayer(_vc),
+                                // タップで再生/一時停止
+                                Positioned.fill(
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () async {
+                                        if (_vc.value.isPlaying) {
+                                          await _vc.pause();
+                                        } else {
+                                          await _vc.play();
+                                        }
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                // 停止中アイコン
+                                IgnorePointer(
+                                  child: AnimatedOpacity(
+                                    opacity: _vc.value.isPlaying ? 0.0 : 1.0,
+                                    duration: const Duration(milliseconds: 150),
+                                    child: const Icon(
+                                      Icons.play_circle_outline,
+                                      size: 84,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(_fmt(_duration)),
-                          ],
+                          ),
                         ),
                       ),
 
-                      // ±10秒 と 再生/一時停止 + 倍速
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      // ② コントロール群
+                      SizedBox(
+                        height: controlsHeight,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.replay_10),
-                              onPressed: () async {
-                                final target =
-                                    _position - const Duration(seconds: 10);
-                                await _vc.seekTo(
-                                  target < Duration.zero ? Duration.zero : target,
-                                );
-                                setState(() {});
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                _vc.value.isPlaying
-                                    ? Icons.pause
-                                    : Icons.play_arrow,
+                            // シークバー＋時間
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
                               ),
-                              onPressed: () async {
-                                if (_vc.value.isPlaying) {
-                                  await _vc.pause();
-                                } else {
-                                  await _vc.play();
-                                }
-                                setState(() {});
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.forward_10),
-                              onPressed: () async {
-                                final target =
-                                    _position + const Duration(seconds: 10);
-                                await _vc.seekTo(
-                                  target > _duration ? _duration : target,
-                                );
-                                setState(() {});
-                              },
+                              child: Row(
+                                children: [
+                                  Text(
+                                    _fmt(
+                                      Duration(milliseconds: currentMs.round()),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Slider(
+                                      min: 0.0,
+                                      max: totalMs,
+                                      value: currentMs.isNaN
+                                          ? 0.0
+                                          : currentMs.toDouble(),
+                                      onChangeStart: (_) {
+                                        _dragging = true;
+                                        _wasPlaying = _vc.value.isPlaying;
+                                        _vc.pause();
+                                      },
+                                      onChanged: (v) =>
+                                          setState(() => _dragValueMs = v),
+                                      onChangeEnd: (v) async {
+                                        _dragging = false;
+                                        _dragValueMs = null;
+                                        await _vc.seekTo(
+                                          Duration(milliseconds: v.round()),
+                                        );
+                                        if (_wasPlaying) await _vc.play();
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ),
+                                  Text(_fmt(_duration)),
+                                ],
+                              ),
                             ),
 
-                            const SizedBox(width: 8),
-                            PopupMenuButton<double>(
-                              onSelected: _setSpeed,
-                              itemBuilder: (context) => _speeds.map((s) {
-                                final selected =
-                                    (_vc.value.playbackSpeed - s).abs() < 0.001;
-                                return PopupMenuItem<double>(
-                                  value: s,
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text('${s}x'),
-                                      if (selected)
-                                        const Icon(Icons.check, size: 18),
-                                    ],
+                            // ±10秒 と 再生/一時停止 + 倍速
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.replay_10),
+                                    onPressed: () async {
+                                      final target =
+                                          _position -
+                                          const Duration(seconds: 10);
+                                      await _vc.seekTo(
+                                        target < Duration.zero
+                                            ? Duration.zero
+                                            : target,
+                                      );
+                                      setState(() {});
+                                    },
                                   ),
-                                );
-                              }).toList(),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.white24),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${_vc.value.playbackSpeed.toStringAsFixed(2)}x',
-                                ),
+                                  IconButton(
+                                    icon: Icon(
+                                      _vc.value.isPlaying
+                                          ? Icons.pause
+                                          : Icons.play_arrow,
+                                    ),
+                                    onPressed: () async {
+                                      if (_vc.value.isPlaying) {
+                                        await _vc.pause();
+                                      } else {
+                                        await _vc.play();
+                                      }
+                                      setState(() {});
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.forward_10),
+                                    onPressed: () async {
+                                      final target =
+                                          _position +
+                                          const Duration(seconds: 10);
+                                      await _vc.seekTo(
+                                        target > _duration ? _duration : target,
+                                      );
+                                      setState(() {});
+                                    },
+                                  ),
+
+                                  const SizedBox(width: 8),
+                                  PopupMenuButton<double>(
+                                    onSelected: _setSpeed,
+                                    itemBuilder: (context) => _speeds.map((s) {
+                                      final selected =
+                                          (_vc.value.playbackSpeed - s).abs() <
+                                          0.001;
+                                      return PopupMenuItem<double>(
+                                        value: s,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text('${s}x'),
+                                            if (selected)
+                                              const Icon(Icons.check, size: 18),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: Colors.white24,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${_vc.value.playbackSpeed.toStringAsFixed(2)}x',
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
                     ],
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      )
+                  );
+                },
+              ),
+            )
           : const Center(child: CircularProgressIndicator()),
     );
   }

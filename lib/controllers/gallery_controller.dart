@@ -63,17 +63,24 @@ class GalleryController extends ChangeNotifier {
       _toast(context, 'ファイルを選択してください');
       return;
     }
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('選択したファイルを削除しますか？'),
-        content: Text('対象: ${targets.length} 件'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('削除')),
-        ],
-      ),
-    ) ??
+    final ok =
+        await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: const Text('選択したファイルを削除しますか？'),
+            content: Text('対象: ${targets.length} 件'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text('キャンセル'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('削除'),
+              ),
+            ],
+          ),
+        ) ??
         false;
     if (!ok) return;
 
@@ -175,27 +182,35 @@ class GalleryController extends ChangeNotifier {
   // =============================
 
   // ---------- 小さなUIヘルパ（ダイアログ/トースト/進捗） ----------
-// の少し上か近くに追加してOK
+  // の少し上か近くに追加してOK
 
   Future<bool> _confirmExportSelected(BuildContext context, int count) async {
     return (await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('確認'),
-        // ★ リクエストどおりの文言を表示（件数も添えるなら2行目を追加）
-        content: Text('選択したデータを端末に戻します。\n対象: $count 件'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('端末に戻す')),
-        ],
-      ),
-    )) ??
+          context: context,
+          builder: (c) => AlertDialog(
+            title: const Text('確認'),
+            // ★ リクエストどおりの文言を表示（件数も添えるなら2行目を追加）
+            content: Text('選択したデータを端末に戻します。\n対象: $count 件'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text('キャンセル'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('端末に戻す'),
+              ),
+            ],
+          ),
+        )) ??
         false;
   }
 
-
   /// 選択中のファイルを端末ギャラリーへ戻す（一括）
-  Future<void> exportSelectedToDevice(BuildContext context, {bool askMove = false}) async {
+  Future<void> exportSelectedToDevice(
+    BuildContext context, {
+    bool askMove = false,
+  }) async {
     final targets = selectedFiles;
     if (targets.isEmpty) {
       _toast(context, 'ファイルを選択してください');
@@ -211,7 +226,7 @@ class GalleryController extends ChangeNotifier {
     final result = await _runWithProgress(
       context,
       '端末へ戻しています...',
-          () => _service.exportToDeviceGallery(targets),
+      () => _service.exportToDeviceGallery(targets),
       timeout: const Duration(minutes: 2),
     );
     if (result == null) return;
@@ -240,18 +255,29 @@ class GalleryController extends ChangeNotifier {
   }
 
   /// 現在フォルダ（サブフォルダ含む）を端末へ戻す
-  Future<void> exportCurrentFolderToDevice(BuildContext context,
-      {bool recursive = true, bool askMove = false}) async {
+  Future<void> exportCurrentFolderToDevice(
+    BuildContext context, {
+    bool recursive = true,
+    bool askMove = false,
+  }) async {
     if (_current == null) return;
 
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('フォルダを端末へ戻しますか？'),
-        content: Text(recursive ? 'サブフォルダも含めて書き出します。' : 'このフォルダ直下のファイルだけを書き出します。'),
+        content: Text(
+          recursive ? 'サブフォルダも含めて書き出します。' : 'このフォルダ直下のファイルだけを書き出します。',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('実行')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('実行'),
+          ),
         ],
       ),
     );
@@ -262,7 +288,10 @@ class GalleryController extends ChangeNotifier {
     final result = await _runWithProgress(
       context,
       'フォルダを書き出しています...',
-          () => _service.exportDirectoryToDeviceGallery(_current!, recursive: recursive),
+      () => _service.exportDirectoryToDeviceGallery(
+        _current!,
+        recursive: recursive,
+      ),
       timeout: const Duration(minutes: 5),
     );
     if (result == null) return;
@@ -291,16 +320,28 @@ class GalleryController extends ChangeNotifier {
   }
 
   /// 任意のフォルダを指定して端末へ戻す（フォルダタイルの「…」から呼ぶ想定）
-  Future<void> exportFolderToDevice(BuildContext context, Directory dir,
-      {bool recursive = true, bool askMove = false}) async {
+  Future<void> exportFolderToDevice(
+    BuildContext context,
+    Directory dir, {
+    bool recursive = true,
+    bool askMove = false,
+  }) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('フォルダを端末へ戻しますか？'),
-        content: Text(recursive ? 'サブフォルダも含めて書き出します。' : 'このフォルダ直下のファイルだけを書き出します。'),
+        content: Text(
+          recursive ? 'サブフォルダも含めて書き出します。' : 'このフォルダ直下のファイルだけを書き出します。',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('実行')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('実行'),
+          ),
         ],
       ),
     );
@@ -311,7 +352,7 @@ class GalleryController extends ChangeNotifier {
     final result = await _runWithProgress(
       context,
       'フォルダを書き出しています...',
-          () => _service.exportDirectoryToDeviceGallery(dir, recursive: recursive),
+      () => _service.exportDirectoryToDeviceGallery(dir, recursive: recursive),
       timeout: const Duration(minutes: 5),
     );
     if (result == null) return;
@@ -339,11 +380,11 @@ class GalleryController extends ChangeNotifier {
 
   /// ★ 追加：進捗付きで安全に実行。失敗/例外/タイムアウトでも必ず閉じる
   Future<T?> _runWithProgress<T>(
-      BuildContext context,
-      String message,
-      Future<T> Function() body, {
-        Duration timeout = const Duration(minutes: 2),
-      }) async {
+    BuildContext context,
+    String message,
+    Future<T> Function() body, {
+    Duration timeout = const Duration(minutes: 2),
+  }) async {
     // どのナビゲータに開くかを固定
     final navigator = Navigator.of(context, rootNavigator: true);
     _showProgress(context, message);
@@ -380,18 +421,28 @@ class GalleryController extends ChangeNotifier {
       builder: (ctx) => AlertDialog(
         title: const Text('新しいフォルダ'),
         content: TextField(
-            controller: c,
-            decoration: const InputDecoration(hintText: 'フォルダ名'),
-            autofocus: true),
+          controller: c,
+          decoration: const InputDecoration(hintText: 'フォルダ名'),
+          autofocus: true,
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('作成')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, c.text.trim()),
+            child: const Text('作成'),
+          ),
         ],
       ),
     );
   }
 
-  Future<List<AssetEntity>?> _openPicker(BuildContext context, List<AssetEntity> assets) {
+  Future<List<AssetEntity>?> _openPicker(
+    BuildContext context,
+    List<AssetEntity> assets,
+  ) {
     return showModalBottomSheet<List<AssetEntity>>(
       context: context,
       isScrollControlled: true,
@@ -406,8 +457,14 @@ class GalleryController extends ChangeNotifier {
         title: const Text('元の写真/動画を削除しますか？'),
         content: const Text('取り込み後に端末の写真から削除します'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('削除する')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('いいえ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('削除する'),
+          ),
         ],
       ),
     );
@@ -420,8 +477,14 @@ class GalleryController extends ChangeNotifier {
         title: const Text('秘密側を削除しますか？'),
         content: const Text('端末へ戻したファイルを秘密側から削除します。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('削除する')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('いいえ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('削除する'),
+          ),
         ],
       ),
     );
@@ -435,7 +498,10 @@ class GalleryController extends ChangeNotifier {
         content: SingleChildScrollView(child: Text(errors.join('\n'))),
         actions: [
           // ★ 修正：外側 context ではなく ctx を閉じる
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
         ],
       ),
     );
@@ -451,7 +517,11 @@ class GalleryController extends ChangeNotifier {
         child: AlertDialog(
           content: Row(
             children: [
-              const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 3),
+              ),
               const SizedBox(width: 16),
               Expanded(child: Text(message)),
             ],
@@ -489,37 +559,51 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
           children: [
             const Padding(
               padding: EdgeInsets.all(12),
-              child: Text('取り込む写真/動画を選択', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                '取り込む写真/動画を選択',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
             Expanded(
               child: GridView.builder(
                 controller: sc,
                 padding: const EdgeInsets.all(8),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4, mainAxisSpacing: 6, crossAxisSpacing: 6),
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                ),
                 itemCount: widget.assets.length,
                 itemBuilder: (_, i) {
                   final a = widget.assets[i];
                   return FutureBuilder<Uint8List?>(
-                    future: a.thumbnailDataWithSize(const ThumbnailSize(200, 200)),
+                    future: a.thumbnailDataWithSize(
+                      const ThumbnailSize(200, 200),
+                    ),
                     builder: (_, s) {
                       final th = s.data;
                       final on = _sel.contains(a);
                       return GestureDetector(
-                        onTap: () => setState(() => on ? _sel.remove(a) : _sel.add(a)),
-                        child: Stack(children: [
-                          Positioned.fill(
-                            child: th != null
-                                ? Image.memory(th, fit: BoxFit.cover)
-                                : const ColoredBox(color: Colors.black12),
-                          ),
-                          if (on)
-                            const Positioned(
-                              right: 4,
-                              top: 4,
-                              child: Icon(Icons.check_circle, color: Colors.lightBlueAccent),
+                        onTap: () =>
+                            setState(() => on ? _sel.remove(a) : _sel.add(a)),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: th != null
+                                  ? Image.memory(th, fit: BoxFit.cover)
+                                  : const ColoredBox(color: Colors.black12),
                             ),
-                        ]),
+                            if (on)
+                              const Positioned(
+                                right: 4,
+                                top: 4,
+                                child: Icon(
+                                  Icons.check_circle,
+                                  color: Colors.lightBlueAccent,
+                                ),
+                              ),
+                          ],
+                        ),
                       );
                     },
                   );
@@ -528,21 +612,25 @@ class _AssetPickerSheetState extends State<_AssetPickerSheet> {
             ),
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Row(children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('キャンセル'),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('キャンセル'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _sel.isEmpty ? null : () => Navigator.pop(context, _sel.toList()),
-                    child: Text('取り込み (${_sel.length})'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _sel.isEmpty
+                          ? null
+                          : () => Navigator.pop(context, _sel.toList()),
+                      child: Text('取り込み (${_sel.length})'),
+                    ),
                   ),
-                ),
-              ]),
+                ],
+              ),
             ),
           ],
         ),

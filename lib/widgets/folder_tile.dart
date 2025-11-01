@@ -93,27 +93,24 @@ class FolderTile extends StatelessWidget {
                       color: Colors.white,
                       tooltip: 'フォルダ削除',
                       onPressed: () async {
-                        final ok = await showDialog<bool>(
-                          context: context,
-                          builder: (c) => AlertDialog(
-                            title: const Text('フォルダを削除しますか？'),
-                            content: Text(
-                              '$name\n（中身もすべて削除されます）',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(c, false),
-                                child: const Text('キャンセル'),
+                        final ok =
+                            await showDialog<bool>(
+                              context: context,
+                              builder: (c) => AlertDialog(
+                                title: const Text('フォルダを削除しますか？'),
+                                content: Text('$name\n（中身もすべて削除されます）'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(c, false),
+                                    child: const Text('キャンセル'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Navigator.pop(c, true),
+                                    child: const Text('削除'),
+                                  ),
+                                ],
                               ),
-                              FilledButton(
-                                onPressed: () =>
-                                    Navigator.pop(c, true),
-                                child: const Text('削除'),
-                              ),
-                            ],
-                          ),
-                        ) ??
+                            ) ??
                             false;
                         if (ok) await onDelete();
                       },

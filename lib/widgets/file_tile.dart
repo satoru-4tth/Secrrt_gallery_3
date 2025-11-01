@@ -10,10 +10,12 @@ class FileTile extends StatefulWidget {
     super.key,
     required this.file,
     required this.onDeleted,
+    this.enableDrag = true, // ★ デフォルトtrue
   });
 
   final File file;
   final Future<void> Function() onDeleted;
+  final bool enableDrag; // ★ 追加：フィールド定義
 
   @override
   State<FileTile> createState() => _FileTileState();
@@ -55,36 +57,40 @@ class _FileTileState extends State<FileTile> {
   Widget build(BuildContext context) {
     final previewChild = _isVideo
         ? (_thumb != null
-        ? Image.memory(_thumb!, fit: BoxFit.cover)
-        : const ColoredBox(color: Colors.black26))
+              ? Image.memory(_thumb!, fit: BoxFit.cover)
+              : const ColoredBox(color: Colors.black26))
         : Image.file(
-      widget.file,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-    );
+            widget.file,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          );
 
-    return LongPressDraggable<File>(
-      data: widget.file,
-      feedbackOffset: const Offset(-20, -20),
-      feedback: _buildDragFeedback(previewChild),
-      childWhenDragging: Opacity(
-        opacity: 0.3,
-        child: _buildTapArea(previewChild),
-      ),
-      child: _buildTapArea(previewChild),
-    );
+    return widget.enableDrag
+        ? LongPressDraggable<File>(
+            data: widget.file,
+            feedbackOffset: const Offset(-20, -20),
+            feedback: _buildDragFeedback(previewChild),
+            childWhenDragging: Opacity(
+              opacity: 0.3,
+              child: _buildTapArea(previewChild),
+            ),
+            child: _buildTapArea(previewChild),
+          )
+        : _buildTapArea(previewChild); // ← 追加：ドラッグ無効時
   }
 
   Widget _buildTapArea(Widget previewChild) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => _ViewerPage(
-            file: widget.file,
-            isVideo: _isVideo,
-            onDeleted: widget.onDeleted,
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => _ViewerPage(
+              file: widget.file,
+              isVideo: _isVideo,
+              onDeleted: widget.onDeleted,
+            ),
           ),
-        ));
+        );
       },
       child: Stack(
         children: [
@@ -93,11 +99,7 @@ class _FileTileState extends State<FileTile> {
             const Positioned(
               right: 4,
               bottom: 4,
-              child: Icon(
-                Icons.play_circle,
-                size: 22,
-                color: Colors.white,
-              ),
+              child: Icon(Icons.play_circle, size: 22, color: Colors.white),
             ),
           Positioned(
             right: 4,
@@ -141,11 +143,7 @@ class _FileTileState extends State<FileTile> {
                 const Positioned(
                   right: 4,
                   bottom: 4,
-                  child: Icon(
-                    Icons.play_circle,
-                    size: 22,
-                    color: Colors.white,
-                  ),
+                  child: Icon(Icons.play_circle, size: 22, color: Colors.white),
                 ),
             ],
           ),
@@ -228,23 +226,24 @@ class _ViewerPageState extends State<_ViewerPage> {
   }
 
   Future<void> _confirmDelete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('削除しますか？'),
-        content: Text(widget.file.path.split(Platform.pathSeparator).last),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('キャンセル'),
+    final ok =
+        await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: const Text('削除しますか？'),
+            content: Text(widget.file.path.split(Platform.pathSeparator).last),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text('キャンセル'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('削除'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(c, true),
-            child: const Text('削除'),
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
     if (!ok) return;
 
@@ -254,8 +253,9 @@ class _ViewerPageState extends State<_ViewerPage> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('削除に失敗: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('削除に失敗: $e')));
     }
   }
 
@@ -265,14 +265,18 @@ class _ViewerPageState extends State<_ViewerPage> {
     if (!widget.isVideo) {
       return Scaffold(
         appBar: AppBar(
-          actions: [IconButton(icon: const Icon(Icons.delete), onPressed: _confirmDelete)],
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _confirmDelete,
+            ),
+          ],
         ),
         body: Center(
           child: Image.file(
             widget.file,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) =>
-            const Text('画像を表示できません'),
+            errorBuilder: (_, __, ___) => const Text('画像を表示できません'),
           ),
         ),
       );
@@ -293,7 +297,8 @@ class _ViewerPageState extends State<_ViewerPage> {
           child: PopupMenuButton<double>(
             onSelected: _setSpeed,
             itemBuilder: (context) => _speeds.map((s) {
-              final selected = (_controller!.value.playbackSpeed - s).abs() < 0.001;
+              final selected =
+                  (_controller!.value.playbackSpeed - s).abs() < 0.001;
               return PopupMenuItem<double>(
                 value: s,
                 child: Row(
@@ -311,8 +316,9 @@ class _ViewerPageState extends State<_ViewerPage> {
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child:
-              Text('${_controller!.value.playbackSpeed.toStringAsFixed(2)}x'),
+              child: Text(
+                '${_controller!.value.playbackSpeed.toStringAsFixed(2)}x',
+              ),
             ),
           ),
         ),
@@ -323,120 +329,125 @@ class _ViewerPageState extends State<_ViewerPage> {
       appBar: AppBar(actions: videoActions),
       body: initialized
           ? Column(
-        children: [
-          // 動画
-          AspectRatio(
-            aspectRatio: _controller!.value.aspectRatio == 0
-                ? 16 / 9
-                : _controller!.value.aspectRatio,
-            child: Stack(
-              alignment: Alignment.center,
               children: [
-                VideoPlayer(_controller!),
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        final playing = _controller!.value.isPlaying;
-                        playing
-                            ? _controller!.pause()
-                            : _controller!.play();
+                // 動画
+                AspectRatio(
+                  aspectRatio: _controller!.value.aspectRatio == 0
+                      ? 16 / 9
+                      : _controller!.value.aspectRatio,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      VideoPlayer(_controller!),
+                      Positioned.fill(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              final playing = _controller!.value.isPlaying;
+                              playing
+                                  ? _controller!.pause()
+                                  : _controller!.play();
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                      ),
+                      IgnorePointer(
+                        child: AnimatedOpacity(
+                          opacity: _controller!.value.isPlaying ? 0.0 : 1.0,
+                          duration: const Duration(milliseconds: 150),
+                          child: const Icon(
+                            Icons.play_circle_outline,
+                            size: 84,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // シークバー
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(_fmt(Duration(milliseconds: currentMs.round()))),
+                      Expanded(
+                        child: Slider(
+                          min: 0,
+                          max: totalMs,
+                          value: currentMs.isNaN ? 0.0 : currentMs.toDouble(),
+                          onChangeStart: (_) {
+                            _dragging = true;
+                            _wasPlaying = _controller!.value.isPlaying;
+                            _controller!.pause();
+                          },
+                          onChanged: (v) => setState(() => _dragValueMs = v),
+                          onChangeEnd: (v) async {
+                            _dragging = false;
+                            _dragValueMs = null;
+                            await _controller!.seekTo(
+                              Duration(milliseconds: v.round()),
+                            );
+                            if (_wasPlaying) _controller!.play();
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                      Text(_fmt(_duration)),
+                    ],
+                  ),
+                ),
+
+                // 再生ボタン群
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.replay_10),
+                      onPressed: () async {
+                        final target = _position - const Duration(seconds: 10);
+                        await _controller!.seekTo(
+                          target < Duration.zero ? Duration.zero : target,
+                        );
                         setState(() {});
                       },
                     ),
-                  ),
-                ),
-                IgnorePointer(
-                  child: AnimatedOpacity(
-                    opacity:
-                    _controller!.value.isPlaying ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: const Icon(
-                      Icons.play_circle_outline,
-                      size: 84,
-                      color: Colors.white70,
+                    IconButton(
+                      icon: Icon(
+                        _controller!.value.isPlaying
+                            ? Icons.pause
+                            : Icons.play_arrow,
+                      ),
+                      onPressed: () async {
+                        final playing = _controller!.value.isPlaying;
+                        if (playing) {
+                          await _controller!.pause();
+                        } else {
+                          await _controller!.play();
+                        }
+                        setState(() {});
+                      },
                     ),
-                  ),
+                    IconButton(
+                      icon: const Icon(Icons.forward_10),
+                      onPressed: () async {
+                        final target = _position + const Duration(seconds: 10);
+                        await _controller!.seekTo(
+                          target > _duration ? _duration : target,
+                        );
+                        setState(() {});
+                      },
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ),
-
-          // シークバー
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                Text(_fmt(Duration(milliseconds: currentMs.round()))),
-                Expanded(
-                  child: Slider(
-                    min: 0,
-                    max: totalMs,
-                    value: currentMs.isNaN ? 0.0 : currentMs.toDouble(),
-                    onChangeStart: (_) {
-                      _dragging = true;
-                      _wasPlaying = _controller!.value.isPlaying;
-                      _controller!.pause();
-                    },
-                    onChanged: (v) => setState(() => _dragValueMs = v),
-                    onChangeEnd: (v) async {
-                      _dragging = false;
-                      _dragValueMs = null;
-                      await _controller!.seekTo(
-                          Duration(milliseconds: v.round()));
-                      if (_wasPlaying) _controller!.play();
-                      setState(() {});
-                    },
-                  ),
-                ),
-                Text(_fmt(_duration)),
-              ],
-            ),
-          ),
-
-          // 再生ボタン群
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.replay_10),
-                onPressed: () async {
-                  final target =
-                      _position - const Duration(seconds: 10);
-                  await _controller!.seekTo(
-                      target < Duration.zero ? Duration.zero : target);
-                  setState(() {});
-                },
-              ),
-              IconButton(
-                icon: Icon(_controller!.value.isPlaying
-                    ? Icons.pause
-                    : Icons.play_arrow),
-                onPressed: () async {
-                  final playing = _controller!.value.isPlaying;
-                  if (playing) {
-                    await _controller!.pause();
-                  } else {
-                    await _controller!.play();
-                  }
-                  setState(() {});
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.forward_10),
-                onPressed: () async {
-                  final target =
-                      _position + const Duration(seconds: 10);
-                  await _controller!.seekTo(
-                      target > _duration ? _duration : target);
-                  setState(() {});
-                },
-              ),
-            ],
-          ),
-        ],
-      )
+            )
           : const Center(child: CircularProgressIndicator()),
     );
   }

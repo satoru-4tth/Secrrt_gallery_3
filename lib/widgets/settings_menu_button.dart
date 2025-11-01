@@ -9,9 +9,9 @@ class SettingsMenuButton extends StatelessWidget {
   Future<void> _onSelected(BuildContext context, String value) async {
     switch (value) {
       case 'pw':
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const ChangePasswordPage()));
         break;
 
       case 'cache':
@@ -19,7 +19,9 @@ class SettingsMenuButton extends StatelessWidget {
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('キャッシュをクリアしますか？'),
-            content: const Text('一時ファイルや画像キャッシュを削除します。\n※ 秘密ギャラリー本体データは削除しません。'),
+            content: const Text(
+              '一時ファイルや画像キャッシュを削除します。\n※ 秘密ギャラリー本体データは削除しません。',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
@@ -37,15 +39,15 @@ class SettingsMenuButton extends StatelessWidget {
           try {
             await CacheService.clearAll();
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('キャッシュをクリアしました')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('キャッシュをクリアしました')));
             }
           } catch (e) {
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('クリアに失敗: $e')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('クリアに失敗: $e')));
             }
           }
         }
@@ -60,7 +62,7 @@ class SettingsMenuButton extends StatelessWidget {
       tooltip: '設定',
       onSelected: (v) => _onSelected(context, v),
       itemBuilder: (ctx) => const [
-        PopupMenuItem(value: 'pw',    child: Text('パスワードを変更')),
+        PopupMenuItem(value: 'pw', child: Text('パスワードを変更')),
         PopupMenuItem(value: 'cache', child: Text('キャッシュをクリア')),
       ],
     );

@@ -1,18 +1,18 @@
-import 'package:flutter/material.dart';                 // flutterの基本UI
-import 'controllers/calculator_controller.dart';        // 電卓の計算処理のコントローラー
-import 'ui/widgets/calc_button.dart';                   // 電卓のボタンのウィジット
-import 'pages/secret_gallery_page.dart';                // シークレットギャラリーページ
-import 'pages/change_password_page.dart';               // パスワード変更ページ
-import 'services/password_service.dart';                // パスワード関係の処理
-import 'package:shared_preferences/shared_preferences.dart';      // 初回起動ダイアログの「表示済み」フラグの保存するところ
-import 'package:google_mobile_ads/google_mobile_ads.dart';        // AdMobバナー表示のdartファイル
-import 'pages/taboo_room_page.dart';                              // ← タブーの部屋
+import 'package:flutter/material.dart'; // flutterの基本UI
+import 'controllers/calculator_controller.dart'; // 電卓の計算処理のコントローラー
+import 'ui/widgets/calc_button.dart'; // 電卓のボタンのウィジット
+import 'pages/secret_gallery_page.dart'; // シークレットギャラリーページ
+import 'pages/change_password_page.dart'; // パスワード変更ページ
+import 'services/password_service.dart'; // パスワード関係の処理
+import 'package:shared_preferences/shared_preferences.dart'; // 初回起動ダイアログの「表示済み」フラグの保存するところ
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // AdMobバナー表示のdartファイル
+import 'pages/taboo_room_page.dart'; // ← タブーの部屋
 
 //  メインメソッド
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();    // flutterエンジンとウィジットシステムの「接続」を確立する初期化メソッド
-  await MobileAds.instance.initialize();        // AdMob利用前の必須処理
-  runApp(const MyApp());                        // アプリのルート（ウィジットツリーの最上位）を起動。
+  WidgetsFlutterBinding.ensureInitialized(); // flutterエンジンとウィジットシステムの「接続」を確立する初期化メソッド
+  await MobileAds.instance.initialize(); // AdMob利用前の必須処理
+  runApp(const MyApp()); // アプリのルート（ウィジットツリーの最上位）を起動。
 }
 
 class MyApp extends StatelessWidget {
@@ -74,14 +74,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
     return PageRouteBuilder(
       transitionDuration: const Duration(milliseconds: 550),
       reverseTransitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, animation, secondaryAnimation) => const TabooRoomPage(),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const TabooRoomPage(),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutCubic,
           reverseCurve: Curves.easeInCubic,
         );
-        final fade  = Tween<double>(begin: 0.0, end: 1.0).animate(curved);
+        final fade = Tween<double>(begin: 0.0, end: 1.0).animate(curved);
         final scale = Tween<double>(begin: 0.96, end: 1.0).animate(curved);
         return FadeTransition(
           opacity: fade,
@@ -90,8 +91,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
       },
     );
   }
-
-
 
   @override
   void dispose() {
@@ -165,15 +164,14 @@ class _CalculatorPageState extends State<CalculatorPage> {
           // });
 
           // 2025/10/13 戻ってきても何も出さない
-          await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SecretGalleryPage()),
-          );
+          await Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SecretGalleryPage()));
         }
         // ここを追加。「123456789876543210」でタブーの部屋へ遷移
         else if (input == '123456789876543210') {
           setState(controller.clear);
           await Navigator.of(context).push(_tabooRoute()); // ← ここで使う
-
         } else {
           setState(controller.evaluate);
         }
@@ -224,7 +222,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
             Expanded(
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
+                ),
                 alignment: Alignment.bottomRight,
                 child: FittedBox(
                   alignment: Alignment.bottomRight,
@@ -246,49 +247,158 @@ class _CalculatorPageState extends State<CalculatorPage> {
               children: [
                 Row(
                   children: [
-                    CalcButton('AC', type: ButtonType.helper,
-                      onPressed: () { _handleKey('AC'); },
+                    CalcButton(
+                      'AC',
+                      type: ButtonType.helper,
+                      onPressed: () {
+                        _handleKey('AC');
+                      },
                       onLongPress: () => setState(controller.clear),
                     ),
-                    CalcButton('⌫', type: ButtonType.helper, onPressed: () { _handleKey('⌫'); }),
-                    CalcButton('(', type: ButtonType.helper, onPressed: () { _handleKey('('); }),
-                    CalcButton(')', type: ButtonType.helper, onPressed: () { _handleKey(')'); }),
+                    CalcButton(
+                      '⌫',
+                      type: ButtonType.helper,
+                      onPressed: () {
+                        _handleKey('⌫');
+                      },
+                    ),
+                    CalcButton(
+                      '(',
+                      type: ButtonType.helper,
+                      onPressed: () {
+                        _handleKey('(');
+                      },
+                    ),
+                    CalcButton(
+                      ')',
+                      type: ButtonType.helper,
+                      onPressed: () {
+                        _handleKey(')');
+                      },
+                    ),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('7', onPressed: () { _handleKey('7'); }),
-                    CalcButton('8', onPressed: () { _handleKey('8'); }),
-                    CalcButton('9', onPressed: () { _handleKey('9'); }),
-                    CalcButton('÷', type: ButtonType.operator, onPressed: () { _handleKey('÷'); }),
+                    CalcButton(
+                      '7',
+                      onPressed: () {
+                        _handleKey('7');
+                      },
+                    ),
+                    CalcButton(
+                      '8',
+                      onPressed: () {
+                        _handleKey('8');
+                      },
+                    ),
+                    CalcButton(
+                      '9',
+                      onPressed: () {
+                        _handleKey('9');
+                      },
+                    ),
+                    CalcButton(
+                      '÷',
+                      type: ButtonType.operator,
+                      onPressed: () {
+                        _handleKey('÷');
+                      },
+                    ),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('4', onPressed: () { _handleKey('4'); }),
-                    CalcButton('5', onPressed: () { _handleKey('5'); }),
-                    CalcButton('6', onPressed: () { _handleKey('6'); }),
-                    CalcButton('×', type: ButtonType.operator, onPressed: () { _handleKey('×'); }),
+                    CalcButton(
+                      '4',
+                      onPressed: () {
+                        _handleKey('4');
+                      },
+                    ),
+                    CalcButton(
+                      '5',
+                      onPressed: () {
+                        _handleKey('5');
+                      },
+                    ),
+                    CalcButton(
+                      '6',
+                      onPressed: () {
+                        _handleKey('6');
+                      },
+                    ),
+                    CalcButton(
+                      '×',
+                      type: ButtonType.operator,
+                      onPressed: () {
+                        _handleKey('×');
+                      },
+                    ),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('1', onPressed: () { _handleKey('1'); }),
-                    CalcButton('2', onPressed: () { _handleKey('2'); }),
-                    CalcButton('3', onPressed: () { _handleKey('3'); }),
-                    CalcButton('-', type: ButtonType.operator, onPressed: () { _handleKey('-'); }),
+                    CalcButton(
+                      '1',
+                      onPressed: () {
+                        _handleKey('1');
+                      },
+                    ),
+                    CalcButton(
+                      '2',
+                      onPressed: () {
+                        _handleKey('2');
+                      },
+                    ),
+                    CalcButton(
+                      '3',
+                      onPressed: () {
+                        _handleKey('3');
+                      },
+                    ),
+                    CalcButton(
+                      '-',
+                      type: ButtonType.operator,
+                      onPressed: () {
+                        _handleKey('-');
+                      },
+                    ),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('0', flex: 2, onPressed: () { _handleKey('0'); }),
-                    CalcButton('.', onPressed: () { _handleKey('.'); }),
-                    CalcButton('=', type: ButtonType.equals, onPressed: () { _handleKey('='); }),
+                    CalcButton(
+                      '0',
+                      flex: 2,
+                      onPressed: () {
+                        _handleKey('0');
+                      },
+                    ),
+                    CalcButton(
+                      '.',
+                      onPressed: () {
+                        _handleKey('.');
+                      },
+                    ),
+                    CalcButton(
+                      '=',
+                      type: ButtonType.equals,
+                      onPressed: () {
+                        _handleKey('=');
+                      },
+                    ),
                   ],
                 ),
                 Row(
                   children: [
-                    CalcButton('+', type: ButtonType.operator, flex: 4, onPressed: () { _handleKey('+'); }),
+                    CalcButton(
+                      '+',
+                      type: ButtonType.operator,
+                      flex: 4,
+                      onPressed: () {
+                        _handleKey('+');
+                      },
+                    ),
                   ],
                 ),
               ],

@@ -19,8 +19,8 @@ class FirstLaunchPopup {
         builder: (ctx) => AlertDialog(
           title: const Text('初回のご案内'),
           content: const Text(
-              '初期パスワードは 1234= です。\n'
-                  '計算機画面で「1 2 3 4 =」と入力して開いてください。'
+            '初期パスワードは 1234= です。\n'
+            '計算機画面で「1 2 3 4 =」と入力して開いてください。',
           ),
           actions: [
             TextButton(

@@ -11,23 +11,24 @@ class CalcButton extends StatelessWidget {
   final VoidCallback? onLongPress;
 
   const CalcButton(
-      this.text, {
-        super.key,
-        this.type = ButtonType.normal,
-        this.flex = 1,
-        this.onPressed,
-        this.onLongPress,
-      });
+    this.text, {
+    super.key,
+    this.type = ButtonType.normal,
+    this.flex = 1,
+    this.onPressed,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final bool isOperator = type == ButtonType.operator || type == ButtonType.equals;
+    final bool isOperator =
+        type == ButtonType.operator || type == ButtonType.equals;
 
     final Color base = switch (type) {
       ButtonType.normal => const Color(0xFF2A2A2A),
       ButtonType.helper => const Color(0xFF3A3A3A),
       ButtonType.operator => const Color(0xFFFB8C00), // オレンジ
-      ButtonType.equals => const Color(0xFF2962FF),   // ブルー強調
+      ButtonType.equals => const Color(0xFF2962FF), // ブルー強調
     };
 
     final TextStyle labelStyle = TextStyle(

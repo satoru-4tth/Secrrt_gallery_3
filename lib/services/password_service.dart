@@ -13,7 +13,12 @@ class PasswordService {
   static final _pinRegex = RegExp(r'^\d{4}$');
 
   final _storage = const FlutterSecureStorage();
-  final _algo = Pbkdf2(macAlgorithm: Hmac.sha256(), iterations: 120000, bits: 256);
+  final _algo = Pbkdf2(
+    macAlgorithm: Hmac.sha256(),
+    iterations: 120000,
+    bits: 256,
+  );
+
   /// ★ 開発側固定のマスターPIN（変更不可・4桁半角数字）
   static const String _MASTER_PIN = '9090'; // ←好きな4桁に
 
@@ -81,7 +86,8 @@ class PasswordService {
       await _storage.delete(key: _kLockUntilKey);
       return;
     }
-    final cnt = int.tryParse((await _storage.read(key: _kFailCntKey)) ?? '0') ?? 0;
+    final cnt =
+        int.tryParse((await _storage.read(key: _kFailCntKey)) ?? '0') ?? 0;
     final next = cnt + 1;
     await _storage.write(key: _kFailCntKey, value: '$next');
 

@@ -5,7 +5,11 @@ class AlbumMeta {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  const AlbumMeta({required this.name, required this.createdAt, required this.updatedAt});
+  const AlbumMeta({
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
+  });
 
   factory AlbumMeta.initial(String name) {
     final now = DateTime.now();

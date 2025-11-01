@@ -22,8 +22,20 @@ bool _looksLikeThumbOrCache(String name) {
 }
 
 const _allowedExts = {
-  'jpg','jpeg','png','gif','webp','heic','heif','bmp',
-  'mp4','mov','m4v','avi','mkv','webm',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'heic',
+  'heif',
+  'bmp',
+  'mp4',
+  'mov',
+  'm4v',
+  'avi',
+  'mkv',
+  'webm',
 };
 
 const _metaFileName = '.album.meta.json';
@@ -33,7 +45,11 @@ extension _VaultMeta on Directory {
 }
 
 class ExportResult {
-  ExportResult({required this.success, required this.fail, required this.errors});
+  ExportResult({
+    required this.success,
+    required this.fail,
+    required this.errors,
+  });
   final int success;
   final int fail;
   final List<String> errors;
@@ -49,7 +65,7 @@ class VaultService {
     return dir;
   }
 
-// これで既存の listEntries を丸ごと置き換え
+  // これで既存の listEntries を丸ごと置き換え
   Future<(List<Directory>, List<File>)> listEntries(Directory dir) async {
     final entries = await dir.list(followLinks: false).toList();
 
@@ -86,15 +102,19 @@ class VaultService {
 
     // 並び順は今まで通り（フォルダ:名前昇順 / ファイル:更新日降順）
     dirs.sort((a, b) => a.path.toLowerCase().compareTo(b.path.toLowerCase()));
-    files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    files.sort(
+      (a, b) => b.statSync().modified.compareTo(a.statSync().modified),
+    );
     return (dirs, files);
   }
 
-
   /// フォルダ作成：表示名(displayName)と物理名(folderName)を分けたい場合に対応。
   /// folderName未指定なら displayName を物理名として使う（禁則文字は置換）。
-  Future<Directory> createFolder(Directory parent, String displayName,
-      {String? folderName}) async {
+  Future<Directory> createFolder(
+    Directory parent,
+    String displayName, {
+    String? folderName,
+  }) async {
     final phys = (folderName ?? displayName)
         .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
         .trim();
@@ -119,7 +139,8 @@ class VaultService {
 
   Future<List<AssetEntity>> browseRecentAssets({int size = 200}) async {
     final perm = await PhotoManager.requestPermissionExtend();
-    if (!perm.hasAccess) throw StateError('no-permission'); // or return ExportResult...
+    if (!perm.hasAccess)
+      throw StateError('no-permission'); // or return ExportResult...
 
     final list = await PhotoManager.getAssetPathList(
       type: RequestType.common,
@@ -129,17 +150,18 @@ class VaultService {
     return list.first.getAssetListPaged(page: 0, size: size);
   }
 
-  Future<void> importAssets(Directory target,
-      List<AssetEntity> selected) async {
+  Future<void> importAssets(
+    Directory target,
+    List<AssetEntity> selected,
+  ) async {
     for (final a in selected) {
       final bytes = await a.originBytes;
       if (bytes == null) continue;
-      final ext = _extFromAsset(a, fallback: (await a.file)?.path
-          .split('.')
-          .last);
-      final ts = DateTime
-          .now()
-          .millisecondsSinceEpoch;
+      final ext = _extFromAsset(
+        a,
+        fallback: (await a.file)?.path.split('.').last,
+      );
+      final ts = DateTime.now().millisecondsSinceEpoch;
       final name = 'vault_${ts}_${a.id}.$ext';
       final out = File(p.join(target.path, name));
       await out.writeAsBytes(bytes, flush: true);
@@ -172,23 +194,28 @@ class VaultService {
   }
 
   Future<AssetEntity?> _saveImageWithTimeout(
-      Uint8List bytes, {
-        required String filename,
-        required String title,
-        required String relativePath,
-        Duration timeout = const Duration(seconds: 20),
-      }) {
+    Uint8List bytes, {
+    required String filename,
+    required String title,
+    required String relativePath,
+    Duration timeout = const Duration(seconds: 20),
+  }) {
     return PhotoManager.editor
-        .saveImage(bytes, filename: filename, title: title, relativePath: relativePath)
+        .saveImage(
+          bytes,
+          filename: filename,
+          title: title,
+          relativePath: relativePath,
+        )
         .timeout(timeout);
   }
 
   Future<AssetEntity?> _saveVideoWithTimeout(
-      File file, {
-        required String title,
-        required String relativePath,
-        Duration timeout = const Duration(seconds: 30),
-      }) {
+    File file, {
+    required String title,
+    required String relativePath,
+    Duration timeout = const Duration(seconds: 30),
+  }) {
     return PhotoManager.editor
         .saveVideo(file, title: title, relativePath: relativePath)
         .timeout(timeout);
@@ -225,11 +252,13 @@ class VaultService {
     final perm = await PhotoManager.requestPermissionExtend();
     if (!perm.hasAccess) {
       return ExportResult(
-          success: 0, fail: files.length, errors: ['権限が許可されていません']);
+        success: 0,
+        fail: files.length,
+        errors: ['権限が許可されていません'],
+      );
     }
 
-    int ok = 0,
-        ng = 0;
+    int ok = 0, ng = 0;
     final errors = <String>[];
 
     for (final f in files) {
@@ -297,23 +326,25 @@ class VaultService {
   }
 
   // --- フォルダ（サブフォルダ含む）を書き出し、相対パスを再現 ---
-  Future<ExportResult> exportDirectoryToDeviceGallery(Directory targetDir,
-      {bool recursive = true}) async {
+  Future<ExportResult> exportDirectoryToDeviceGallery(
+    Directory targetDir, {
+    bool recursive = true,
+  }) async {
     final root = await ensureVaultRoot();
 
     final perm = await PhotoManager.requestPermissionExtend();
     if (!perm.hasAccess) {
       final count = await _countFiles(targetDir, recursive: recursive);
-      return ExportResult(
-          success: 0, fail: count, errors: ['権限が許可されていません']);
+      return ExportResult(success: 0, fail: count, errors: ['権限が許可されていません']);
     }
 
-    int ok = 0,
-        ng = 0;
+    int ok = 0, ng = 0;
     final errors = <String>[];
 
     await for (final e in targetDir.list(
-        recursive: recursive, followLinks: false)) {
+      recursive: recursive,
+      followLinks: false,
+    )) {
       if (e is! File) continue;
       if (_shouldSkip(e)) continue; // メタ/隠しファイル除外
 
@@ -357,10 +388,10 @@ class VaultService {
                 : 'Pictures/SecretGallery/$dirOnly';
             // try: 画像
             final saved = await _saveImageWithTimeout(
-            bytes,
-            filename: baseName,
-            title: baseName,
-            relativePath: relPath,
+              bytes,
+              filename: baseName,
+              title: baseName,
+              relativePath: relPath,
             );
             if (saved == null) throw Exception('unknown->saveImage null');
             ok++;
@@ -370,9 +401,9 @@ class VaultService {
                 : 'Movies/SecretGallery/$dirOnly';
             // catch: 動画
             final saved = await _saveVideoWithTimeout(
-            e,
-            title: baseName,
-            relativePath: relPath,
+              e,
+              title: baseName,
+              relativePath: relPath,
             );
             if (saved == null) throw Exception('unknown->saveVideo null');
             ok++;
@@ -388,7 +419,7 @@ class VaultService {
     return ExportResult(success: ok, fail: ng, errors: errors);
   }
 
-// --- helpers（VaultServiceクラス内に置く） ---
+  // --- helpers（VaultServiceクラス内に置く） ---
   bool _isImageExt(String ext) =>
       {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.bmp'}.contains(ext);
 

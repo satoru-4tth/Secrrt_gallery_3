@@ -37,9 +37,9 @@ class _TabooRoomPageState extends State<TabooRoomPage>
       HapticFeedback.heavyImpact();
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Discordプロフィールを開けませんでした。')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Discordプロフィールを開けませんでした。')));
     }
   }
 
@@ -85,10 +85,14 @@ class _TabooRoomPageState extends State<TabooRoomPage>
                 ),
 
                 // 3) 微細ノイズ（フィルム粒子）
-                IgnorePointer(child: CustomPaint(painter: _FilmGrainPainter(t))),
+                IgnorePointer(
+                  child: CustomPaint(painter: _FilmGrainPainter(t)),
+                ),
 
                 // 4) 走査線（ごく薄いCRT風）
-                IgnorePointer(child: CustomPaint(painter: _ScanlinePainter(opacity: 0.06))),
+                IgnorePointer(
+                  child: CustomPaint(painter: _ScanlinePainter(opacity: 0.06)),
+                ),
 
                 // 5) ビネット（周辺減光で中央を強調）
                 Container(
@@ -245,10 +249,7 @@ class _MistBlob extends StatelessWidget {
           child: Container(
             width: size,
             height: size,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
         ),
       ),
@@ -400,9 +401,7 @@ class _CryptTitle extends StatelessWidget {
           fontWeight: FontWeight.w900,
           letterSpacing: 4.0,
           color: c,
-          shadows: [
-            Shadow(color: c.withOpacity(0.5), blurRadius: blur),
-          ],
+          shadows: [Shadow(color: c.withOpacity(0.5), blurRadius: blur)],
         ),
       ),
     );
@@ -410,8 +409,12 @@ class _CryptTitle extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        layer(const Color(0xFFFF1133).withOpacity(0.9), Offset(dx, 0), 18),   // 赤
-        layer(const Color(0xFF1BA1FF).withOpacity(0.8), Offset(-dx, dy), 14), // 青
+        layer(const Color(0xFFFF1133).withOpacity(0.9), Offset(dx, 0), 18), // 赤
+        layer(
+          const Color(0xFF1BA1FF).withOpacity(0.8),
+          Offset(-dx, dy),
+          14,
+        ), // 青
         layer(Colors.white, Offset.zero, 8),
       ],
     );
@@ -513,7 +516,11 @@ class _GlassBackButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: const Color(0xFFFF96A3).withOpacity(0.95), size: 18),
+                Icon(
+                  icon,
+                  color: const Color(0xFFFF96A3).withOpacity(0.95),
+                  size: 18,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   label,
