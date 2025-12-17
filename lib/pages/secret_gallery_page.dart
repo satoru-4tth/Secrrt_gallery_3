@@ -56,7 +56,8 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
 
     // ▼ バナー読み込み（ギャラリー用のユニットIDに差し替え推奨）
     _banner = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // ★ Androidバナー公式テストID
+      adUnitId: 'ca-app-pub-3293904273131334/6422605981', // ★ AndroidバナーID
+      // adUnitId: 'ca-app-pub-3940256099942544/6300978111', // テスト用広告ユニットID
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(

@@ -57,7 +57,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
     // ▼ バナー読み込み（initState内）
     _banner = BannerAd(
-      adUnitId: 'ca-app-pub-3293904273131334/6422605981', // Androidバナーの公式テストID
+      adUnitId: 'ca-app-pub-3293904273131334/6422605981', // AndroidバナーID
+      // adUnitId: 'ca-app-pub-3940256099942544/6300978111', // テスト用広告ユニットID
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(

@@ -28,7 +28,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     super.initState();
     _banner = BannerAd(
       // 本番では「パスワード変更画面」用のユニットIDに差し替え
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // 公式テスト用(バナー/Android)
+      adUnitId: 'ca-app-pub-3293904273131334/6422605981', // 正式(バナー/Android)
+      // adUnitId: 'ca-app-pub-3940256099942544/6300978111', // テスト用広告ユニットID
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
