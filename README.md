@@ -1,5 +1,7 @@
 # secret_gallery_3
 
+notionで管理する。
+
 アイコン設定
 おｋ
 
