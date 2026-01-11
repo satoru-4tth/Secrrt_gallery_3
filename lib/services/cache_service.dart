@@ -19,18 +19,25 @@ class CacheService {
 
   static Future<void> _deleteChildren(Directory dir) async {
     if (!await dir.exists()) return;
-    final stream = dir.list(recursive: true, followLinks: false);
-    await for (final e in stream) {
-      try {
-        if (e is File) {
-          await e.delete();
-        } else if (e is Directory) {
-          await _deleteChildren(e);
-          await e.delete();
+
+    try {
+      await for (final e in dir.list(followLinks: false)) {
+        try {
+          if (e is File) {
+            await e.delete();
+          } else if (e is Directory) {
+            await _deleteChildren(e);
+            if (await e.exists()) {
+              await e.delete();
+            }
+          }
+        } catch (_) {
+          // ロック中・OS管理下は無視
         }
-      } catch (_) {
-        // ロック中などはスキップ
       }
+    } catch (_) {
+      // list 自体が失敗するケース（今回のエラー）
     }
   }
+
 }
