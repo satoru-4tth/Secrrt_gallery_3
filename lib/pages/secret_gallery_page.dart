@@ -21,6 +21,21 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
   late final GalleryController ctrl;
   final VaultService _vault = VaultService(); // ★ 追加: 移動に使う
   bool _pickingForExport = false; // ★ 追加：エクスポートのための一時選択モード
+  BannerAd? _banner;  // ▼ バナー用フィールド
+
+
+  // =========================
+  // ★ インタースティシャル用フィールド（←ここ）
+  // =========================
+  InterstitialAd? _interstitial;
+  bool _isInterstitialLoading = false;
+
+  // 頻度制御
+  int _folderCreateCount = 0;
+  DateTime? _lastInterstitialShownAt;
+
+  static const int _showEveryN = 3; // 3回に1回
+  static const Duration _cooldown = Duration(seconds: 90);
 
   void _startExportPicking() {
     setState(() {
@@ -44,9 +59,6 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
     setState(() => _pickingForExport = false);
   }
 
-  // ▼ バナー用フィールド
-  BannerAd? _banner;
-
   @override
   void initState() {
     super.initState();
@@ -56,8 +68,8 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
 
     // ▼ バナー読み込み（ギャラリー用のユニットIDに差し替え推奨）
     _banner = BannerAd(
-      // adUnitId: 'ca-app-pub-3293904273131334/6422605981', // ★ AndroidバナーID
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // テスト用広告ユニットID
+      adUnitId: 'ca-app-pub-3293904273131334/6422605981', // ★ AndroidバナーID
+      // adUnitId: 'ca-app-pub-3940256099942544/6300978111', // テスト用広告ユニットID
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
@@ -69,15 +81,76 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
       ),
     )
       ..load();
+    _loadInterstitial();
   }
 
   @override
   void dispose() {
     _banner?.dispose();
+    _interstitial?.dispose();
     ctrl.dispose();
     super.dispose();
   }
 
+  // =========================
+  // ★ ここから追加：Interstitial 関連（クラスの中）
+  // =========================
+  void _loadInterstitial() {
+    if (_isInterstitialLoading) return;
+    _isInterstitialLoading = true;
+
+    InterstitialAd.load(
+      adUnitId: 'ca-app-pub-3293904273131334/4958765243', // ★本番 interstitial のID
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _interstitial = ad;
+          _isInterstitialLoading = false;
+
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) {
+              ad.dispose();
+              _interstitial = null;
+              _loadInterstitial(); // 次を準備
+            },
+            onAdFailedToShowFullScreenContent: (ad, err) {
+              ad.dispose();
+              _interstitial = null;
+              _loadInterstitial(); // 次を準備
+            },
+          );
+        },
+        onAdFailedToLoad: (err) {
+          _isInterstitialLoading = false;
+          _interstitial = null;
+          debugPrint('Interstitial failed to load: $err');
+        },
+      ),
+    );
+  }
+
+  bool _shouldShowInterstitialAfterFolderCreate() {
+    _folderCreateCount++;
+
+    if (_folderCreateCount % _showEveryN != 0) return false;
+
+    final last = _lastInterstitialShownAt;
+    if (last != null && DateTime.now().difference(last) < _cooldown) return false;
+
+    if (_interstitial == null) {
+      _loadInterstitial();
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _maybeShowInterstitial() async {
+    if (!_shouldShowInterstitialAfterFolderCreate()) return;
+
+    _lastInterstitialShownAt = DateTime.now();
+    _interstitial?.show();
+  }
   // =====================================================
   // ★ 追加：ファイル移動処理
   //
@@ -201,7 +274,12 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
                       tooltip: '取り込み（現在のフォルダ）',
                     ),
                     IconButton(
-                      onPressed: () => ctrl.createFolder(context),
+                      onPressed: () async {
+                        final ok = await ctrl.createFolder(context);
+                        if (!ok) return;            // 作成失敗/キャンセルなら広告なし
+                        await _maybeShowInterstitial(); // 作成成功後だけ広告
+                      },
+
                       icon: const Icon(Icons.create_new_folder_outlined),
                       tooltip: 'フォルダ作成',
                     ),

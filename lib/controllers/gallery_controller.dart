@@ -118,16 +118,23 @@ class GalleryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createFolder(BuildContext context) async {
+  Future<bool> createFolder(BuildContext context) async {
     final name = await _askFolderName(context);
-    if (name == null || name.isEmpty) return;
+    if (name == null || name.isEmpty) return false;
+
     try {
       await _service.createFolder(_current!, name);
       await refresh();
+      return true; // ★成功
     } on FileSystemException {
       _toast(context, '同名フォルダが既にあります');
+      return false;
+    } catch (e) {
+      _toast(context, '作成に失敗しました: $e');
+      return false;
     }
   }
+
 
   // --- 端末からの取り込み（既存） ---
   Future<void> importFromSystem(BuildContext context) async {
