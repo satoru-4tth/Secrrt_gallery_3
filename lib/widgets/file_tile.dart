@@ -273,10 +273,14 @@ class _ViewerPageState extends State<_ViewerPage> {
           ],
         ),
         body: Center(
-          child: Image.file(
-            widget.file,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Text('画像を表示できません'),
+          child: InteractiveViewer(
+            minScale: 1.0,
+            maxScale: 5.0,
+            child: Image.file(
+              widget.file,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Text('画像を表示できません'),
+            ),
           ),
         ),
       );
@@ -338,21 +342,30 @@ class _ViewerPageState extends State<_ViewerPage> {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      VideoPlayer(_controller!),
+                      // ★ ピンチ対応
                       Positioned.fill(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              final playing = _controller!.value.isPlaying;
-                              playing
-                                  ? _controller!.pause()
-                                  : _controller!.play();
-                              setState(() {});
-                            },
+                        child: InteractiveViewer(
+                          minScale: 1.0,
+                          maxScale: 4.0,
+                          child: Center(
+                            child: VideoPlayer(_controller!),
                           ),
                         ),
                       ),
+
+                      // ★ タップで再生/停止（ピンチは InteractiveViewer が取る）
+                      Positioned.fill(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onTap: () {
+                            final playing = _controller!.value.isPlaying;
+                            playing ? _controller!.pause() : _controller!.play();
+                            setState(() {});
+                          },
+                        ),
+                      ),
+
+                      // 停止中アイコン（表示だけ）
                       IgnorePointer(
                         child: AnimatedOpacity(
                           opacity: _controller!.value.isPlaying ? 0.0 : 1.0,

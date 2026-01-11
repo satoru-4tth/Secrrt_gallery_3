@@ -1,3 +1,4 @@
+// 2026/01/12 今のところ使ってないっぽいファイル。
 // lib/pages/video_player_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
