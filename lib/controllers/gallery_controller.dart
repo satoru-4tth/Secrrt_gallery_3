@@ -91,7 +91,7 @@ class GalleryController extends ChangeNotifier {
     }
     clearSelection();
     await refresh();
-    _toast(context, '削除しました');
+    if (context.mounted) _toast(context, '削除しました');
   }
   // ▲▲▲ ここまで追加 ▲▲▲
 
@@ -127,10 +127,10 @@ class GalleryController extends ChangeNotifier {
       await refresh();
       return true; // ★成功
     } on FileSystemException {
-      _toast(context, '同名フォルダが既にあります');
+      if (context.mounted) _toast(context, '同名フォルダが既にあります');
       return false;
     } catch (e) {
-      _toast(context, '作成に失敗しました: $e');
+      if (context.mounted) _toast(context, '作成に失敗しました: $e');
       return false;
     }
   }
@@ -141,19 +141,22 @@ class GalleryController extends ChangeNotifier {
     try {
       final assets = await _service.browseRecentAssets();
       if (assets.isEmpty) return;
+      if (!context.mounted) return;
       final selected = await _openPicker(context, assets);
       if (selected == null || selected.isEmpty) return;
 
       await _service.importAssets(_current!, selected);
 
-      final delete = await _askDeleteOriginal(context);
+      final delete = context.mounted
+          ? await _askDeleteOriginal(context)
+          : null;
       if (delete == true) {
         await _service.deleteOriginals(selected);
       }
       await refresh();
-      _toast(context, '取り込みが完了しました');
+      if (context.mounted) _toast(context, '取り込みが完了しました');
     } on StateError {
-      _toast(context, '写真へのアクセスが許可されていません');
+      if (context.mounted) _toast(context, '写真へのアクセスが許可されていません');
     }
   }
 
@@ -228,8 +231,10 @@ class GalleryController extends ChangeNotifier {
     final go = await _confirmExportSelected(context, targets.length);
     if (!go) return;
 
+    if (!context.mounted) return;
     if (!await _ensurePhotoPermission(context)) return;
 
+    if (!context.mounted) return;
     final result = await _runWithProgress(
       context,
       '端末へ戻しています...',
@@ -238,6 +243,7 @@ class GalleryController extends ChangeNotifier {
     );
     if (result == null) return;
 
+    if (!context.mounted) return;
     _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
 
     if (result.errors.isNotEmpty) {
@@ -245,6 +251,7 @@ class GalleryController extends ChangeNotifier {
     }
 
     if (askMove && result.success > 0) {
+      if (!context.mounted) return;
       final doMove = await _askMoveAfterExport(context);
       if (doMove == true) {
         for (final f in targets) {
@@ -253,7 +260,7 @@ class GalleryController extends ChangeNotifier {
           } catch (_) {}
         }
         await refresh();
-        _toast(context, '端末へ戻し、秘密側から削除しました');
+        if (context.mounted) _toast(context, '端末へ戻し、秘密側から削除しました');
       }
     }
     // ★ 追加：export 後は常に UI を更新
@@ -290,8 +297,10 @@ class GalleryController extends ChangeNotifier {
     );
     if (ok != true) return;
 
+    if (!context.mounted) return;
     if (!await _ensurePhotoPermission(context)) return;
 
+    if (!context.mounted) return;
     final result = await _runWithProgress(
       context,
       'フォルダを書き出しています...',
@@ -303,6 +312,7 @@ class GalleryController extends ChangeNotifier {
     );
     if (result == null) return;
 
+    if (!context.mounted) return;
     _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
 
     if (result.errors.isNotEmpty) {
@@ -310,6 +320,7 @@ class GalleryController extends ChangeNotifier {
     }
 
     if (askMove && result.success > 0) {
+      if (!context.mounted) return;
       final doMove = await _askMoveAfterExport(context);
       if (doMove == true) {
         try {
@@ -320,7 +331,7 @@ class GalleryController extends ChangeNotifier {
         } catch (_) {
           // 個別削除にフォールバックしても良い
         }
-        _toast(context, '端末へ戻し、秘密側のフォルダを削除しました');
+        if (context.mounted) _toast(context, '端末へ戻し、秘密側のフォルダを削除しました');
       }
     }
     await refresh();
@@ -354,8 +365,10 @@ class GalleryController extends ChangeNotifier {
     );
     if (ok != true) return;
 
+    if (!context.mounted) return;
     if (!await _ensurePhotoPermission(context)) return;
 
+    if (!context.mounted) return;
     final result = await _runWithProgress(
       context,
       'フォルダを書き出しています...',
@@ -364,6 +377,7 @@ class GalleryController extends ChangeNotifier {
     );
     if (result == null) return;
 
+    if (!context.mounted) return;
     _toast(context, '保存: ${result.success}件 / 失敗: ${result.fail}件');
 
     if (result.errors.isNotEmpty) {
@@ -371,13 +385,14 @@ class GalleryController extends ChangeNotifier {
     }
 
     if (askMove && result.success > 0) {
+      if (!context.mounted) return;
       final doMove = await _askMoveAfterExport(context);
       if (doMove == true) {
         try {
           await _service.deleteFolder(dir);
           await refresh();
         } catch (_) {}
-        _toast(context, '端末へ戻し、秘密側のフォルダを削除しました');
+        if (context.mounted) _toast(context, '端末へ戻し、秘密側のフォルダを削除しました');
       }
     }
     await refresh();
@@ -414,7 +429,7 @@ class GalleryController extends ChangeNotifier {
   Future<bool> _ensurePhotoPermission(BuildContext context) async {
     final perm = await PhotoManager.requestPermissionExtend();
     if (!perm.hasAccess) {
-      _toast(context, '写真へのアクセスが許可されていません');
+      if (context.mounted) _toast(context, '写真へのアクセスが許可されていません');
       return false;
     }
     return true;
@@ -519,8 +534,8 @@ class GalleryController extends ChangeNotifier {
       context: context,
       useRootNavigator: true, // 端末に保存した後のグルグル対応
       barrierDismissible: false,
-      builder: (_) => WillPopScope(
-        onWillPop: () async => false,
+      builder: (_) => PopScope(
+        canPop: false,
         child: AlertDialog(
           content: Row(
             children: [

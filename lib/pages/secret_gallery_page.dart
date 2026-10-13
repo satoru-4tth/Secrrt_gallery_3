@@ -204,9 +204,8 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
     try {
       await src.rename(newPath);
     } catch (_) {
-      final newFile = await src.copy(newPath);
+      await src.copy(newPath);
       await src.delete();
-      // newFile は使わないが、将来ログ等で使いたければ保持可
     }
   }
 
@@ -230,7 +229,7 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
 
         return PopScope(
             canPop: !_pickingForExport, // false にすると戻る操作をブロックできる
-            onPopInvoked: (didPop) {
+            onPopInvokedWithResult: (didPop, _) {
               if (!didPop && _pickingForExport) {
                 _cancelPicking();
               }

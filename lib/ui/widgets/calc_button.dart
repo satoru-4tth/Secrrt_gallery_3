@@ -49,7 +49,7 @@ class CalcButton extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: base,
               foregroundColor: Colors.white,
-              shadowColor: Colors.black.withOpacity(0.4),
+              shadowColor: Colors.black.withValues(alpha: 0.4),
               elevation: 1,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),

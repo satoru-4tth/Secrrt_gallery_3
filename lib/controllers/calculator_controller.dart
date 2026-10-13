@@ -54,7 +54,7 @@ class CalculatorController {
 
   double _calculate(String expression) {
     final expStr = expression.replaceAll('×', '*').replaceAll('÷', '/');
-    final parser = Parser();
+    final parser = ShuntingYardParser();
     final exp = parser.parse(expStr);
     final cm = ContextModel();
     final v = exp.evaluate(EvaluationType.REAL, cm);

@@ -72,6 +72,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     )..load();
   }
 
+  // ignore: unused_element -- タブーの部屋を再有効化するときに使う
   PageRouteBuilder _tabooRoute() {
     return PageRouteBuilder(
       transitionDuration: const Duration(milliseconds: 550),
@@ -152,6 +153,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         final has = await svc.hasPassword();
         final input = controller.input;
         final ok = has ? await svc.verify(input) : (input == '1234');
+        if (!mounted) return;
 
         if (ok) {
           setState(controller.clear);
@@ -183,6 +185,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
     }
   }
 
+  // ignore: unused_element -- 初期設定の案内を再有効化するときに使う
   void _promptSetPassword(BuildContext context) {
     showDialog(
       context: context,

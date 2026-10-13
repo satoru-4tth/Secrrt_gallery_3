@@ -30,14 +30,14 @@ class FolderTile extends StatelessWidget {
 
     return DragTarget<File>(
       // ドロップ可能か？ true を返せばハイライトが出る
-      onWillAccept: (data) {
+      onWillAcceptWithDetails: (details) {
         // ここで条件付けも可能（例：同じディレクトリなら拒否など）
-        return data != null;
+        return true;
       },
 
       // 実際にドロップ（指を離した）とき
-      onAccept: (file) async {
-        await onFileDropped(file, dir);
+      onAcceptWithDetails: (details) async {
+        await onFileDropped(details.data, dir);
       },
 
       builder: (context, candidateData, rejectedData) {

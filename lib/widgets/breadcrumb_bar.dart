@@ -75,11 +75,12 @@ class BreadcrumbBar extends StatelessWidget implements PreferredSizeWidget {
     required Directory parentDir,
   }) {
     return DragTarget<File>(
-      onWillAccept: (data) {
+      onWillAcceptWithDetails: (details) {
         // data != null なら受け入れOK
-        return data != null;
+        return true;
       },
-      onAccept: (file) async {
+      onAcceptWithDetails: (details) async {
+        final file = details.data;
         // ファイルを親フォルダへ移動させる処理は
         // 親ウィジェット(SecretGalleryPage)側にやってもらう
         await onFileDroppedToParent(file, parentDir);

@@ -139,8 +139,9 @@ class VaultService {
 
   Future<List<AssetEntity>> browseRecentAssets({int size = 200}) async {
     final perm = await PhotoManager.requestPermissionExtend();
-    if (!perm.hasAccess)
+    if (!perm.hasAccess) {
       throw StateError('no-permission'); // or return ExportResult...
+    }
 
     final list = await PhotoManager.getAssetPathList(
       type: RequestType.common,

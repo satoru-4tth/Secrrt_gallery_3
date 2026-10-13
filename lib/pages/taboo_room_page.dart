@@ -272,7 +272,7 @@ class _FilmGrainPainter extends CustomPainter {
       final x = _rng!.nextDouble() * size.width;
       final y = _rng!.nextDouble() * size.height;
       final o = 0.015 + 0.02 * _rng!.nextDouble();
-      paint.color = Colors.white.withOpacity(o);
+      paint.color = Colors.white.withValues(alpha: o);
       canvas.drawRect(Rect.fromLTWH(x, y, 1, 1), paint);
     }
   }
@@ -287,7 +287,7 @@ class _ScanlinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.black.withOpacity(opacity);
+    final paint = Paint()..color = Colors.black.withValues(alpha: opacity);
     const gap = 3.0;
     for (double y = 0; y < size.height; y += gap) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
@@ -401,7 +401,7 @@ class _CryptTitle extends StatelessWidget {
           fontWeight: FontWeight.w900,
           letterSpacing: 4.0,
           color: c,
-          shadows: [Shadow(color: c.withOpacity(0.5), blurRadius: blur)],
+          shadows: [Shadow(color: c.withValues(alpha: 0.5), blurRadius: blur)],
         ),
       ),
     );
@@ -409,9 +409,9 @@ class _CryptTitle extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        layer(const Color(0xFFFF1133).withOpacity(0.9), Offset(dx, 0), 18), // 赤
+        layer(const Color(0xFFFF1133).withValues(alpha: 0.9), Offset(dx, 0), 18), // 赤
         layer(
-          const Color(0xFF1BA1FF).withOpacity(0.8),
+          const Color(0xFF1BA1FF).withValues(alpha: 0.8),
           Offset(-dx, dy),
           14,
         ), // 青
@@ -450,12 +450,12 @@ class _CrimsonButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
-            colors: [deep.withOpacity(0.66), const Color(0x2212161E)],
+            colors: [deep.withValues(alpha: 0.66), const Color(0x2212161E)],
           ),
-          border: Border.all(color: red.withOpacity(0.85), width: 1.2),
+          border: Border.all(color: red.withValues(alpha: 0.85), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: red.withOpacity(0.22 * pulse),
+              color: red.withValues(alpha: 0.22 * pulse),
               blurRadius: 28 + 10 * pulse,
               spreadRadius: 1.2,
             ),
@@ -464,7 +464,7 @@ class _CrimsonButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: red.withOpacity(0.95)),
+            Icon(icon, color: red.withValues(alpha: 0.95)),
             const SizedBox(width: 10),
             ShaderMask(
               shaderCallback: (r) => const LinearGradient(
@@ -518,14 +518,14 @@ class _GlassBackButton extends StatelessWidget {
               children: [
                 Icon(
                   icon,
-                  color: const Color(0xFFFF96A3).withOpacity(0.95),
+                  color: const Color(0xFFFF96A3).withValues(alpha: 0.95),
                   size: 18,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   label,
                   style: TextStyle(
-                    color: const Color(0xFFFF96A3).withOpacity(0.95),
+                    color: const Color(0xFFFF96A3).withValues(alpha: 0.95),
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.8,
                   ),
