@@ -9,6 +9,8 @@ import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
 import '../widgets/settings_menu_button.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart'; // ★ 追加
+import '../services/password_service.dart';
+import '../widgets/recovery_code_dialog.dart';
 
 class SecretGalleryPage extends StatefulWidget {
   const SecretGalleryPage({super.key});
@@ -65,6 +67,7 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
     ctrl = GalleryController(_vault);
     // 非同期初期化
     WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.init());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureRecoveryCode());
 
     // ▼ バナー読み込み（ギャラリー用のユニットIDに差し替え推奨）
     _banner = BannerAd(
@@ -82,6 +85,15 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
     )
       ..load();
     _loadInterstitial();
+  }
+
+  // PINを設定済みなのに回復コードが未発行なら、ここで発行して表示する
+  Future<void> _ensureRecoveryCode() async {
+    final svc = PasswordService();
+    if (!await svc.hasPassword() || await svc.hasRecoveryCode()) return;
+    final code = await svc.issueRecoveryCode();
+    if (!mounted) return;
+    await showRecoveryCodeDialog(context, code);
   }
 
   @override

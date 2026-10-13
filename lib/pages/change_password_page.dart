@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/password_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart'; // ★ 追加
+import '../widgets/recovery_code_dialog.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -74,6 +75,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         oldPass: has ? _old.text : null,
         newPass: _new1.text,
       );
+
+      // 回復コード未発行ならここで発行して表示（初回設定時など）
+      if (!await svc.hasRecoveryCode()) {
+        final code = await svc.issueRecoveryCode();
+        if (!mounted) return;
+        await showRecoveryCodeDialog(context, code);
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(

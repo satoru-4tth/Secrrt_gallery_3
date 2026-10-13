@@ -7,6 +7,7 @@ import 'services/password_service.dart'; // パスワード関係の処理
 import 'package:shared_preferences/shared_preferences.dart'; // 初回起動ダイアログの「表示済み」フラグの保存するところ
 import 'package:google_mobile_ads/google_mobile_ads.dart'; // AdMobバナー表示のdartファイル
 import 'pages/taboo_room_page.dart'; // ← タブーの部屋
+import 'pages/recovery_page.dart'; // PIN再設定（回復コード）
 
 //  メインメソッド
 void main() async {
@@ -211,7 +212,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        // タイトルの長押しで「PINの再設定（回復コード）」画面へ。見た目は電卓のまま。
+        title: GestureDetector(
+          key: const Key('calc_title'),
+          behavior: HitTestBehavior.opaque,
+          onLongPress: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const RecoveryPage())),
+          child: Text(widget.title),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,

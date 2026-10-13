@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import '../services/cache_service.dart';
 import '../pages/change_password_page.dart';
+import '../services/password_service.dart';
+import 'recovery_code_dialog.dart';
 
 class SettingsMenuButton extends StatelessWidget {
   const SettingsMenuButton({super.key});
@@ -12,6 +14,40 @@ class SettingsMenuButton extends StatelessWidget {
         Navigator.of(
           context,
         ).push(MaterialPageRoute(builder: (_) => const ChangePasswordPage()));
+        break;
+
+      case 'recovery':
+        final svc = PasswordService();
+        if (!await svc.hasPassword()) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('先にPINを設定してください')),
+            );
+          }
+          break;
+        }
+        if (!context.mounted) break;
+        final reissue = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('回復コードを再発行しますか？'),
+            content: const Text('以前の回復コードは使えなくなります。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('キャンセル'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('再発行'),
+              ),
+            ],
+          ),
+        );
+        if (reissue == true) {
+          final code = await svc.issueRecoveryCode();
+          if (context.mounted) await showRecoveryCodeDialog(context, code);
+        }
         break;
 
       case 'cache':
@@ -63,6 +99,7 @@ class SettingsMenuButton extends StatelessWidget {
       onSelected: (v) => _onSelected(context, v),
       itemBuilder: (ctx) => const [
         PopupMenuItem(value: 'pw', child: Text('パスワードを変更')),
+        PopupMenuItem(value: 'recovery', child: Text('回復コードを再発行')),
         PopupMenuItem(value: 'cache', child: Text('キャッシュをクリア')),
       ],
     );
