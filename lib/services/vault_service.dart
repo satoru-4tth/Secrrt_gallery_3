@@ -6,7 +6,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+import 'package:flutter/painting.dart' show Color;
 import '../models/album_meta.dart';
+import '../models/folder_style.dart';
 import 'dart:typed_data';
 import 'dart:async';
 
@@ -39,6 +41,9 @@ const _allowedExts = {
 };
 
 const _metaFileName = '.album.meta.json';
+
+/// プレビューに使う画像の拡張子（Flutter が確実にデコードできるもの）
+const _previewExts = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'};
 
 extension _VaultMeta on Directory {
   File get metaFile => File(p.join(path, _metaFileName));
@@ -238,7 +243,89 @@ class VaultService {
   }
 
   Future<void> writeMeta(Directory dir, AlbumMeta meta) async {
-    await dir.metaFile.writeAsString(jsonEncode(meta.toJson()));
+    // 書き込み途中で中断してもメタが壊れないよう、一時ファイル→rename で置き換える
+    final tmp = File('${dir.metaFile.path}.tmp');
+    await tmp.writeAsString(jsonEncode(meta.toJson()), flush: true);
+    await tmp.rename(dir.metaFile.path);
+  }
+
+  // ===== フォルダの見た目（色・形）と中身のプレビュー =====
+
+  /// メタが無い・壊れている場合は null（読み取りでファイルは作らない）
+  Future<AlbumMeta?> _readMetaOrNull(Directory dir) async {
+    try {
+      final mf = dir.metaFile;
+      if (!await mf.exists()) return null;
+      final map = jsonDecode(await mf.readAsString());
+      return map is Map<String, dynamic> ? AlbumMeta.fromJson(map) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// フォルダの色・形を読む。未設定・不正値は既定の見た目にする。
+  Future<FolderStyle> readFolderStyle(Directory dir) async {
+    final meta = await _readMetaOrNull(dir);
+    final c = meta?.colorValue;
+    return FolderStyle(
+      color: c == null ? FolderStyle.defaultColor : Color(c),
+      shape: FolderShape.fromId(meta?.shape),
+    );
+  }
+
+  /// フォルダの色・形を保存する（名前・作成日など他の項目は保持）
+  Future<void> setAlbumStyle(Directory dir, FolderStyle style) async {
+    final current =
+        await _readMetaOrNull(dir) ?? AlbumMeta.initial(p.basename(dir.path));
+    await writeMeta(
+      dir,
+      current.copyWith(
+        colorValue: style.color.toARGB32(),
+        shape: style.shape.id,
+      ),
+    );
+  }
+
+  /// フォルダ内の画像（新しい順、最大 [max] 枚）。直下に足りなければ
+  /// サブフォルダの画像で補う。フォルダが無い・読めない場合は空。
+  Future<List<File>> previewImages(Directory dir, {int max = 4}) async {
+    if (max <= 0) return const [];
+    try {
+      final direct = <File>[];
+      final subdirs = <Directory>[];
+      await for (final e in dir.list(followLinks: false)) {
+        final name = p.basename(e.path);
+        if (name.startsWith('.')) continue;
+        if (e is File) {
+          final ext = p.extension(name).toLowerCase().replaceFirst('.', '');
+          if (_previewExts.contains(ext) && !_looksLikeThumbOrCache(name)) {
+            direct.add(e);
+          }
+        } else if (e is Directory) {
+          subdirs.add(e);
+        }
+      }
+
+      final dated = <(File, DateTime)>[];
+      for (final f in direct) {
+        try {
+          final st = await f.stat();
+          if (st.size == 0) continue; // 0バイトは除外（一覧と同じ扱い）
+          dated.add((f, st.modified));
+        } catch (_) {}
+      }
+      dated.sort((a, b) => b.$2.compareTo(a.$2));
+      final result = dated.take(max).map((e) => e.$1).toList();
+
+      subdirs.sort((a, b) => a.path.toLowerCase().compareTo(b.path.toLowerCase()));
+      for (final sub in subdirs) {
+        if (result.length >= max) break;
+        result.addAll(await previewImages(sub, max: max - result.length));
+      }
+      return result;
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// 既存フォルダの論理名だけ変えたいとき

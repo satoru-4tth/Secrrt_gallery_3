@@ -351,6 +351,7 @@ class _SecretGalleryPageState extends State<SecretGalleryPage> {
                             final d = ctrl.dirs[i];
                             return FolderTile(
                               dir: d,
+                              revision: ctrl.revision,
                               onOpen: () => ctrl.goInto(d),
                               onDelete: () => ctrl.deleteFolder(d),
                               onExport: (dir) =>

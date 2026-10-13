@@ -20,6 +20,10 @@ class GalleryController extends ChangeNotifier {
   List<Directory> get dirs => _dirs;
   List<File> get files => _files;
 
+  /// 一覧を読み直すたびに増える番号（フォルダのプレビュー更新の合図に使う）
+  int _revision = 0;
+  int get revision => _revision;
+
   // 追加：選択状態（ファイル選択 → 端末へ戻す）
   // ★ File ではなく path で持つ。refresh() 後も一致させるため
   final Set<String> _selectedPaths = {};
@@ -114,6 +118,7 @@ class GalleryController extends ChangeNotifier {
 
     // ▼ 追加：存在しない選択を掃除
     _selectedPaths.removeWhere((p) => !_files.any((x) => x.path == p));
+    _revision++;
 
     notifyListeners();
   }
